@@ -1,0 +1,90 @@
+apis:
+  - id: global-search
+    name: Global Search
+    version: v1
+    method: GET
+    path: /api/v1/search
+    description: Full-text search across stores and products. Returns ranked results with category context.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: q
+        type: String
+        location: QUERY
+        required: true
+        validation:
+          minLength: 2
+          maxLength: 200
+          errorMessage: Search query must be at least 2 characters
+      - name: latitude
+        type: Double
+        location: QUERY
+        required: false
+        validation:
+          min: -90.0
+          max: 90.0
+          errorMessage: Latitude must be between -90 and 90
+      - name: longitude
+        type: Double
+        location: QUERY
+        required: false
+        validation:
+          min: -180.0
+          max: 180.0
+          errorMessage: Longitude must be between -180 and 180
+      - name: categoryId
+        type: String
+        location: QUERY
+        required: false
+        validation:
+          minLength: 1
+          errorMessage: Category ID must be a valid string
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: SearchResult identifier
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: response data
+      - name: currentStatus
+        type: String
+        description: Current record status
+        defaultValue: ACTIVE
+      - name: fetchedAt
+        type: LocalDateTime
+        description: Data retrieval timestamp
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p135
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: SELECT
+        entity: SearchResult
+        mapping:
+          q: "#{request.q}"
+          latitude: "#{request.latitude}"
+          longitude: "#{request.longitude}"
+          categoryId: "#{request.categoryId}"

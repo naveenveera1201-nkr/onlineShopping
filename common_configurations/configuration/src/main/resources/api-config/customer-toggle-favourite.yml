@@ -1,0 +1,71 @@
+apis:
+  - id: customer-toggle-favourite
+    name: Save / Unsave Favourite Store
+    version: v1
+    method: POST
+    path: /api/v1/customer/favourites/{storeId}
+    description: Toggles a store in the customer's favourites list. POST to save, DELETE to remove.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: storeId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Store ID is required
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated FavouriteStore ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p111
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: FavouriteStore
+        mapping:
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/favouritestore-event"

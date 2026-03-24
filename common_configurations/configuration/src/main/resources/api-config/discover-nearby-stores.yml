@@ -1,0 +1,83 @@
+apis:
+  - id: discover-nearby-stores
+    name: Get Nearby Stores Strip
+    version: v1
+    method: GET
+    path: /api/v1/discover/nearby
+    description: Returns a curated list of nearby stores across all categories, based on the customer's current GPS location.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: latitude
+        type: Double
+        location: QUERY
+        required: true
+        validation:
+          min: -90.0
+          max: 90.0
+          errorMessage: Latitude must be between -90 and 90
+      - name: longitude
+        type: Double
+        location: QUERY
+        required: true
+        validation:
+          min: -180.0
+          max: 180.0
+          errorMessage: Longitude must be between -180 and 180
+      - name: radiusKm
+        type: Double
+        location: QUERY
+        required: false
+        defaultValue: '5'
+        validation:
+          min: 0.1
+          max: 50.0
+          errorMessage: Radius must be between 0.1 and 50 km
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Store identifier
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: response data
+      - name: currentStatus
+        type: String
+        description: Current record status
+        defaultValue: ACTIVE
+      - name: fetchedAt
+        type: LocalDateTime
+        description: Data retrieval timestamp
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p114
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: SELECT
+        entity: Store
+        mapping:
+          latitude: "#{request.latitude}"
+          longitude: "#{request.longitude}"
+          radiusKm: "#{request.radiusKm}"

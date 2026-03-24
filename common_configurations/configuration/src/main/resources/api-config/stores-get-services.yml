@@ -1,0 +1,65 @@
+apis:
+  - id: stores-get-services
+    name: Get Store Services
+    version: v1
+    method: GET
+    path: /api/v1/stores/{storeId}/services
+    description: Returns the list of offered services (stitching, alterations for tailors; haircut, facial for salons) with
+      pricing.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - PUBLIC
+      authorization:
+        enabled: false
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 30
+        requestsPerHour: 500
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: storeId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Store ID is required
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Service identifier
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: response data
+      - name: currentStatus
+        type: String
+        description: Current record status
+        defaultValue: ACTIVE
+      - name: fetchedAt
+        type: LocalDateTime
+        description: Data retrieval timestamp
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p118
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: SELECT
+        entity: Service
+        mapping:
+          storeId: "#{request.storeId}"
+    

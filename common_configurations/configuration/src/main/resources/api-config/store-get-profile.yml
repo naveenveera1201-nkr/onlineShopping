@@ -1,0 +1,55 @@
+apis:
+  - id: store-get-profile
+    name: Get Store Profile
+    version: v1
+    method: GET
+    path: /api/v1/store/profile
+    description: Returns the authenticated store's complete profile including category, address, operating hours, and current
+      open/closed status.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters: []
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: StoreProfile identifier
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: response data
+      - name: currentStatus
+        type: String
+        description: Current record status
+        defaultValue: ACTIVE
+      - name: fetchedAt
+        type: LocalDateTime
+        description: Data retrieval timestamp
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p136
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: SELECT
+        entity: StoreProfile

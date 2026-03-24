@@ -1,0 +1,56 @@
+{
+  "Processes": [
+    {
+      "Code": "p100",
+      "ShortDesc": "SVCREQ",
+      "Description": "Service Request",
+      "InitialStatus": 10,
+      "ApprovalFlow": true,
+      "NoOfLevels": 2,
+      "ApprovalSteps": [
+        {
+          "Code": 1,
+          "Level": 1,
+          "Action": "Approve",
+          "PrevStatus": 10,
+          "NextStatus": 30
+        },
+        {
+          "Code": 2,
+          "Level": 1,
+          "Action": "Reject",
+          "PrevStatus": 10,
+          "NextStatus": 50
+        },
+        {
+          "Code": 3,
+          "Level": 1,
+          "Action": "Return",
+          "PrevStatus": 10,
+          "NextStatus": 100
+        },
+        {
+          "Code": 4,
+          "Level": 2,
+          "Action": "Approve",
+          "PrevStatus": 30,
+          "NextStatus": 60
+        },
+        {
+          "Code": 5,
+          "Level": 2,
+          "Action": "Reject",
+          "PrevStatus": 30,
+          "NextStatus": 50
+        }
+      ]
+    },
+    {
+      "Code": "p101",
+      "ShortDesc": "USER",
+      "Description": "User",
+      "InitialStatus": 30,
+      "ApprovalFlow": false
+    }
+  ]
+}

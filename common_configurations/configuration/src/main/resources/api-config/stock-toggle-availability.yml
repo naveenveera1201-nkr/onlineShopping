@@ -1,0 +1,78 @@
+apis:
+  - id: stock-toggle-availability
+    name: Toggle Item Availability
+    version: v1
+    method: PATCH
+    path: /api/v1/store/stock/{itemId}/toggle
+    description: Instantly marks an item as available or unavailable without changing quantity.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: itemId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Item ID is required
+      - name: available
+        type: Boolean
+        location: BODY
+        required: true
+        validation:
+          customRule: MUST_BE_BOOLEAN
+          errorMessage: available must be a boolean value
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Updated StockItem ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: updated data
+      - name: currentStatus
+        type: String
+        description: Record status after update
+        defaultValue: ACTIVE
+      - name: updatedAt
+        type: LocalDateTime
+        description: Update timestamp
+      - name: updatedBy
+        type: String
+        description: Actor who performed the update
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p145
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: UPDATE
+        entity: StockItem
+        mapping:
+          available: "#{request.available}"
+          updatedAt: "#{now()}"
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/stockitem-event"

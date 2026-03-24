@@ -1,0 +1,100 @@
+{
+  "Processes": [
+    {
+      "Code": "p200",
+      "ShortDesc": "COMPLEX_SVCREQ",
+      "Description": "Complex Service Request with Escalation and Rework",
+      "InitialStatus": 10,
+      "ApprovalFlow": true,
+      "NoOfLevels": 4,
+      "ApprovalSteps": [
+
+        {
+          "Code": 1,
+          "Level": 1,
+          "Action": "APPROVE",
+          "PrevStatus": 10,
+          "NextStatus": 20
+        },
+        {
+          "Code": 2,
+          "Level": 1,
+          "Action": "REJECT",
+          "PrevStatus": 10,
+          "NextStatus": 90,
+          "IsTerminal": true
+        },
+        {
+          "Code": 3,
+          "Level": 1,
+          "Action": "RETURN",
+          "PrevStatus": 10,
+          "NextStatus": 15
+        },
+
+        {
+          "Code": 4,
+          "Level": 2,
+          "Action": "APPROVE",
+          "PrevStatus": 20,
+          "NextStatus": 30
+        },
+        {
+          "Code": 5,
+          "Level": 2,
+          "Action": "ESCALATE",
+          "PrevStatus": 20,
+          "NextStatus": 25
+        },
+        {
+          "Code": 6,
+          "Level": 2,
+          "Action": "REJECT",
+          "PrevStatus": 20,
+          "NextStatus": 90,
+          "IsTerminal": true
+        },
+
+        {
+          "Code": 7,
+          "Level": 3,
+          "Action": "APPROVE",
+          "PrevStatus": 25,
+          "NextStatus": 40
+        },
+        {
+          "Code": 8,
+          "Level": 3,
+          "Action": "RETURN",
+          "PrevStatus": 25,
+          "NextStatus": 15
+        },
+
+        {
+          "Code": 9,
+          "Level": 4,
+          "Action": "APPROVE",
+          "PrevStatus": 40,
+          "NextStatus": 60,
+          "IsTerminal": true
+        },
+        {
+          "Code": 10,
+          "Level": 4,
+          "Action": "REJECT",
+          "PrevStatus": 40,
+          "NextStatus": 90,
+          "IsTerminal": true
+        },
+
+        {
+          "Code": 11,
+          "Level": 1,
+          "Action": "RESUBMIT",
+          "PrevStatus": 15,
+          "NextStatus": 10
+        }
+      ]
+    }
+  ]
+}

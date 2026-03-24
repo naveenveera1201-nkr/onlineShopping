@@ -1,0 +1,82 @@
+apis:
+  - id: stores-list-by-category
+    name: List Stores by Category
+    version: v1
+    method: GET
+    path: /api/v1/stores
+    description: Returns all active stores for a given category, sorted by distance from customer location.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - PUBLIC
+      authorization:
+        enabled: false
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 30
+        requestsPerHour: 500
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: categoryId
+        type: String
+        location: QUERY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Category ID is required
+      - name: latitude
+        type: Double
+        location: QUERY
+        required: false
+        validation:
+          min: -90.0
+          max: 90.0
+          errorMessage: Latitude must be between -90 and 90
+      - name: longitude
+        type: Double
+        location: QUERY
+        required: false
+        validation:
+          min: -180.0
+          max: 180.0
+          errorMessage: Longitude must be between -180 and 180
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Store identifier
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: response data
+      - name: currentStatus
+        type: String
+        description: Current record status
+        defaultValue: ACTIVE
+      - name: fetchedAt
+        type: LocalDateTime
+        description: Data retrieval timestamp
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p115
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: SELECT
+        entity: Store
+        mapping:
+          categoryId: "#{request.categoryId}"
+          latitude: "#{request.latitude}"
+          longitude: "#{request.longitude}"
+    

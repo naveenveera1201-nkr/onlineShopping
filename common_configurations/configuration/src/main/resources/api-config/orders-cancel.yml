@@ -1,0 +1,79 @@
+apis:
+  - id: orders-cancel
+    name: Cancel Order
+    version: v1
+    method: POST
+    path: /api/v1/orders/{orderId}/cancel
+    description: Cancels a placed order. Only allowed while status is 'placed' — before the store accepts.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: orderId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Order ID is required
+      - name: reason
+        type: String
+        location: BODY
+        required: false
+        validation:
+          maxLength: 500
+          errorMessage: Reason must be under 500 characters
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated Order ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p125
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: Order
+        mapping:
+          reason: "#{request.reason}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/order-event"

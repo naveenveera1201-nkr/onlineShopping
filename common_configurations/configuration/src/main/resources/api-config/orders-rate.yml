@@ -1,0 +1,88 @@
+apis:
+  - id: orders-rate
+    name: Rate Order & Store
+    version: v1
+    method: POST
+    path: /api/v1/orders/{orderId}/rate
+    description: Submits a star rating (1-5) and optional text review after delivery. Shown in store's rating breakdown.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: orderId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Order ID is required
+      - name: rating
+        type: Integer
+        location: BODY
+        required: true
+        validation:
+          min: 1
+          max: 5
+          errorMessage: Rating must be between 1 and 5
+      - name: review
+        type: String
+        location: BODY
+        required: false
+        validation:
+          maxLength: 1000
+          errorMessage: Review must be under 1000 characters
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated Rating ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p126
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: Rating
+        mapping:
+          rating: "#{request.rating}"
+          review: "#{request.review}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/rating-event"

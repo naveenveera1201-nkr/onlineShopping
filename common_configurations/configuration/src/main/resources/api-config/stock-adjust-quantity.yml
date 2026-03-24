@@ -1,0 +1,77 @@
+apis:
+  - id: stock-adjust-quantity
+    name: Adjust Stock Quantity (Delta)
+    version: v1
+    method: PATCH
+    path: /api/v1/store/stock/{itemId}/adjust
+    description: Increments or decrements stock by a delta value. Useful for quick +1/-1 stepper taps in the stock list.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: itemId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Item ID is required
+      - name: delta
+        type: Integer
+        location: BODY
+        required: true
+        validation:
+          errorMessage: delta must be a non-zero integer (positive to add, negative to subtract)
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Updated StockItem ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: updated data
+      - name: currentStatus
+        type: String
+        description: Record status after update
+        defaultValue: ACTIVE
+      - name: updatedAt
+        type: LocalDateTime
+        description: Update timestamp
+      - name: updatedBy
+        type: String
+        description: Actor who performed the update
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p144
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: UPDATE
+        entity: StockItem
+        mapping:
+          delta: "#{request.delta}"
+          updatedAt: "#{now()}"
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/stockitem-event"

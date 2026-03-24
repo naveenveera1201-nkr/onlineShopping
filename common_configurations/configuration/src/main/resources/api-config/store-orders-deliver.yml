@@ -1,0 +1,78 @@
+apis:
+  - id: store-orders-deliver
+    name: Mark Order as Delivered
+    version: v1
+    method: POST
+    path: /api/v1/store/orders/{orderId}/deliver
+    description: Marks a dispatched order as delivered. Triggers the customer's order completion screen and rating prompt.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: orderId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Order ID is required
+      - name: deliveryProof
+        type: String
+        location: BODY
+        required: false
+        validation:
+          errorMessage: Delivery proof must be a base64 image or GPS coordinate string
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated StoreOrder ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p151
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: StoreOrder
+        mapping:
+          deliveryProof: "#{request.deliveryProof}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/storeorder-event"

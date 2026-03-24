@@ -1,0 +1,143 @@
+apis:
+  - id: user-registration
+    name: User Registration API
+    version: v1
+    method: POST
+    path: /api/v1/users/register
+    description: Register a new user in the system
+    enabled: true
+
+    # Security Configuration
+    security:
+      authentication:
+        enabled: true
+        type: JWT  # JWT, API_KEY, BASIC, OAUTH2, NONE
+        roles: [PUBLIC]
+      authorization:
+        enabled: false
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 10
+        requestsPerHour: 100
+      encryption:
+        enabled: true
+        algorithm: AES256
+
+    # Request Configuration
+    request:
+      contentType: application/json
+      parameters:
+        - name: username
+          type: String
+          location: BODY
+          required: true
+          validation:
+            minLength: 3
+            maxLength: 50
+            pattern: "^[a-zA-Z0-9_]+$"
+            customRule: "NO_SPECIAL_CHARS"
+            errorMessage: "Username must be 3-50 alphanumeric characters"
+
+        - name: email
+          type: String
+          location: BODY
+          required: true
+          validation:
+            pattern: "^[A-Za-z0-9+_.-]+@(.+)$"
+            customRule: "VALID_EMAIL"
+            errorMessage: "Invalid email format"
+
+        - name: password
+          type: String
+          location: BODY
+          required: true
+          sensitive: true
+          validation:
+            minLength: 8
+            maxLength: 100
+            pattern: "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$"
+            errorMessage: "Password must contain letters, numbers, and special characters"
+
+        - name: age
+          type: Integer
+          location: BODY
+          required: true
+          validation:
+            min: 18
+            max: 120
+            errorMessage: "Age must be between 18 and 120"
+
+        - name: phoneNumber
+          type: String
+          location: BODY
+          required: false
+          validation:
+            pattern: "^[0-9]{10}$"
+            errorMessage: "Phone number must be 10 digits"
+
+        - name: termsAccepted
+          type: Boolean
+          location: BODY
+          required: true
+          validation:
+            customRule: "MUST_BE_TRUE"
+            errorMessage: "Terms and conditions must be accepted"
+
+    # Response Configuration
+    response:
+      successCode: 201
+      contentType: application/json
+      fields:
+        - name: id
+          type: Long
+          description: "Generated user ID"
+
+        - name: history
+          type: String
+          description: "history"
+
+        - name: data
+          type: String
+          description: "registered data"
+
+        - name: currentStatus
+          type: String
+          description: "Registration status"
+          defaultValue: "ACTIVE"
+
+        - name: createdAt
+          type: LocalDateTime
+          description: "Registration timestamp"
+
+        - name: createdBy
+          type: String
+          description: "created by"
+
+    # Business Logic Configuration
+    businessLogic:
+      businessLogicRequired: Y
+      processCode: p100
+      type: CUSTOM_SERVICE #DATABASE  # DATABASE, EXTERNAL_API, CUSTOM_SERVICE, MOCK
+      dataSource: primaryDb
+      operations:
+        - type: INSERT
+          entity: User
+          mapping:
+            username: "#{request.username}"
+            email: "#{request.email}"
+            password: "#{encrypted(request.password)}"
+            age: "#{request.age}"
+            phoneNumber: "#{request.phoneNumber}"
+            createdAt: "#{now()}"
+            status: "ACTIVE"
+
+    # Callbacks and Notifications
+    callbacks:
+      - event: SUCCESS
+        type: WEBHOOK
+        url: "https://example.com/webhooks/user-registered"
+
+      - event: SUCCESS
+        type: EMAIL
+        template: "welcome-email"
+        recipient: "#{response.email}"

@@ -1,0 +1,74 @@
+apis:
+  - id: auth-refresh-token
+    name: Refresh Access Token
+    version: v1
+    method: POST
+    path: /api/v1/auth/refresh
+    description: Issues a new access token using a valid refresh token. Called silently when the app detects the access token
+      is about to expire.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - PUBLIC
+      authorization:
+        enabled: false
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 10
+        requestsPerHour: 100
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: refreshToken
+        type: String
+        location: BODY
+        required: true
+        sensitive: true
+        validation:
+          minLength: 1
+          errorMessage: Refresh token is required
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated AuthToken ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p103
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: AuthToken
+        mapping:
+          refreshToken: "#{encrypted(request.refreshToken)}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/authtoken-event"

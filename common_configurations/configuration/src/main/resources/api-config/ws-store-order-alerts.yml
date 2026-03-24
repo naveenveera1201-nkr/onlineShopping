@@ -1,0 +1,58 @@
+apis:
+  - id: ws-store-order-alerts
+    name: Store New-Order Alert Socket
+    version: v1
+    method: WS
+    path: "wss://api.nammakadaitheru.in/ws/store/orders"
+    description: WebSocket connection for live new-order alerts on the store dashboard. Server pushes full order objects on
+      arrival.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: WEBSOCKET_TOKEN
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: token
+        type: String
+        location: QUERY
+        required: true
+        sensitive: true
+        validation:
+          minLength: 1
+          errorMessage: Store JWT token is required
+    response:
+      successCode: 101
+      contentType: application/json
+      fields:
+      - name: event
+        type: String
+        description: WebSocket event type (status_update | location_update | eta_update)
+      - name: data
+        type: Object
+        description: Event payload object
+      - name: timestamp
+        type: LocalDateTime
+        description: Server-side event timestamp
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p153
+      type: WEBSOCKET
+      dataSource: primaryDb
+      operations:
+      - type: SUBSCRIBE
+        entity: OrderAlert
+#        description: Persistent WebSocket subscription — server pushes events to connected clients
+    

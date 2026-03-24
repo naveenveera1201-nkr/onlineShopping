@@ -1,0 +1,134 @@
+apis:
+  - id: customer-add-address
+    name: Add Delivery Address
+    version: v1
+    method: POST
+    path: /api/v1/customer/addresses
+    description: Saves a new delivery address to the customer's profile for use during checkout.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: label
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          maxLength: 50
+          errorMessage: Address label is required
+      - name: line1
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          maxLength: 200
+          errorMessage: Address line 1 is required
+      - name: line2
+        type: String
+        location: BODY
+        required: false
+        validation:
+          maxLength: 200
+          errorMessage: Address line 2 must be under 200 characters
+      - name: city
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          maxLength: 100
+          errorMessage: City is required
+      - name: state
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          maxLength: 100
+          errorMessage: State is required
+      - name: pincode
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^[0-9]{6}$
+          errorMessage: Pincode must be a 6-digit number
+      - name: latitude
+        type: Double
+        location: BODY
+        required: false
+        validation:
+          min: -90.0
+          max: 90.0
+          errorMessage: Latitude must be between -90 and 90
+      - name: longitude
+        type: Double
+        location: BODY
+        required: false
+        validation:
+          min: -180.0
+          max: 180.0
+          errorMessage: Longitude must be between -180 and 180
+    response:
+      successCode: 201
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated Address ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p109
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: Address
+        mapping:
+          label: "#{request.label}"
+          line1: "#{request.line1}"
+          line2: "#{request.line2}"
+          city: "#{request.city}"
+          state: "#{request.state}"
+          pincode: "#{request.pincode}"
+          latitude: "#{request.latitude}"
+          longitude: "#{request.longitude}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/address-event"

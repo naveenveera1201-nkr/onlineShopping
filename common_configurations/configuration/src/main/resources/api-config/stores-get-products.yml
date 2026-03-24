@@ -1,0 +1,78 @@
+apis:
+  - id: stores-get-products
+    name: Get Store Product Catalogue
+    version: v1
+    method: GET
+    path: /api/v1/stores/{storeId}/products
+    description: Returns all products for a specific store grouped by sub-category, with real-time stock levels.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - PUBLIC
+      authorization:
+        enabled: false
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 30
+        requestsPerHour: 500
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: storeId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Store ID is required
+      - name: categoryFilter
+        type: String
+        location: QUERY
+        required: false
+        validation:
+          minLength: 1
+          errorMessage: Category filter must be a valid string
+      - name: available
+        type: Boolean
+        location: QUERY
+        required: false
+        validation:
+          errorMessage: available must be a boolean
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Product identifier
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: response data
+      - name: currentStatus
+        type: String
+        description: Current record status
+        defaultValue: ACTIVE
+      - name: fetchedAt
+        type: LocalDateTime
+        description: Data retrieval timestamp
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p117
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: SELECT
+        entity: Product
+        mapping:
+          storeId: "#{request.storeId}"
+          categoryFilter: "#{request.categoryFilter}"
+          available: "#{request.available}"

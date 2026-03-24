@@ -1,0 +1,57 @@
+apis:
+  - id: stock-delete-item
+    name: Remove Custom Stock Item
+    version: v1
+    method: DELETE
+    path: /api/v1/store/stock/{itemId}
+    description: Permanently removes a custom item from the store's catalogue. Only custom items (custom=true) can be deleted.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: itemId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Item ID is required
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: ID of the deleted StockItem
+      - name: currentStatus
+        type: String
+        description: Status after deletion
+        defaultValue: DELETED
+      - name: message
+        type: String
+        description: Deletion confirmation message
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p146
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: DELETE
+        entity: StockItem
+        mapping:
+          itemId: "#{request.itemId}"

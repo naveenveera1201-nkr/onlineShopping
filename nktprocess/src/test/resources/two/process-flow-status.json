@@ -1,0 +1,12 @@
+{
+  "Statuses": [
+    { "Code": 10, "Description": "Submitted" },
+    { "Code": 15, "Description": "Returned for Rework" },
+    { "Code": 20, "Description": "Initial Approval Completed" },
+    { "Code": 25, "Description": "Escalated for Senior Review" },
+    { "Code": 30, "Description": "Technical Approval Completed" },
+    { "Code": 40, "Description": "Senior Approval Completed" },
+    { "Code": 60, "Description": "Final Approved" },
+    { "Code": 90, "Description": "Rejected" }
+  ]
+}

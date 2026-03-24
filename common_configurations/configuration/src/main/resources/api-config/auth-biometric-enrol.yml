@@ -1,0 +1,91 @@
+apis:
+  - id: auth-biometric-enrol
+    name: Enrol Biometric Token
+    version: v1
+    method: POST
+    path: /api/v1/auth/biometric/enrol
+    description: Stores a device-bound biometric token (FIDO2 public key or device fingerprint hash) so the user can sign in
+     without OTP on subsequent logins.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: deviceId
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Device ID is required
+      - name: biometricToken
+        type: String
+        location: BODY
+        required: true
+        sensitive: true
+        validation:
+          minLength: 1
+          errorMessage: Biometric token is required
+      - name: platform
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(android|ios)$
+          errorMessage: platform must be 'android' or 'ios'
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated BiometricToken ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p104
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: BiometricToken
+        mapping:
+          deviceId: "#{request.deviceId}"
+          biometricToken: "#{encrypted(request.biometricToken)}"
+          platform: "#{request.platform}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/biometrictoken-event"

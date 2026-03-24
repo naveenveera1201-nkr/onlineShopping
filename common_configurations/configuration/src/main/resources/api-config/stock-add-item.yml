@@ -1,0 +1,113 @@
+apis:
+  - id: stock-add-item
+    name: Add New Stock Item
+    version: v1
+    method: POST
+    path: /api/v1/store/stock
+    description: Adds a new custom product to the store's catalogue. Custom items are store-specific.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: name
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          maxLength: 100
+          errorMessage: Item name is required (max 100 chars)
+      - name: sub
+        type: String
+        location: BODY
+        required: false
+        validation:
+          maxLength: 50
+          errorMessage: Sub-category must be under 50 characters
+      - name: price
+        type: Double
+        location: BODY
+        required: true
+        validation:
+          min: 0.01
+          errorMessage: Price must be greater than 0
+      - name: emoji
+        type: String
+        location: BODY
+        required: false
+        validation:
+          maxLength: 5
+          errorMessage: Emoji must be a single emoji character
+      - name: category
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Category is required
+      - name: qty
+        type: Integer
+        location: BODY
+        required: true
+        validation:
+          min: 0
+          errorMessage: Quantity must be 0 or greater
+    response:
+      successCode: 201
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated StockItem ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p141
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: StockItem
+        mapping:
+          name: "#{request.name}"
+          sub: "#{request.sub}"
+          price: "#{request.price}"
+          emoji: "#{request.emoji}"
+          category: "#{request.category}"
+          qty: "#{request.qty}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/stockitem-event"

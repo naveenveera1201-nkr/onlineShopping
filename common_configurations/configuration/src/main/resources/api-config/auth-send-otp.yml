@@ -1,0 +1,98 @@
+apis:
+  - id: auth-send-otp
+    name: Send OTP
+    version: v1
+    method: POST
+    path: /api/v1/auth/send-otp
+    description: Sends a 4-digit OTP to the given phone number or email address. Works for both new registrations and returning
+      logins.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - PUBLIC
+      authorization:
+        enabled: false
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 10
+        requestsPerHour: 100
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: identifier
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          maxLength: 100
+          errorMessage: Identifier (phone/email) is required
+      - name: identifierType
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(phone|email)$
+          errorMessage: identifierType must be 'phone' or 'email'
+      - name: userType
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(customer|store)$
+          errorMessage: userType must be 'customer' or 'store'
+      - name: purpose
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(register|login)$
+          errorMessage: purpose must be 'register' or 'login'
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated OTP ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p101
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: OTP
+        mapping:
+          identifier: "#{request.identifier}"
+          identifierType: "#{request.identifierType}"
+          userType: "#{request.userType}"
+          purpose: "#{request.purpose}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/otp-event"

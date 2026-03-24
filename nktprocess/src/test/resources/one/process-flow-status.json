@@ -1,0 +1,20 @@
+{
+  "Statuses" : [
+    {
+      "Code" : 10,
+      "Description" : "Pending for approval"
+    },
+    {
+      "Code" : 20,
+      "Description" : "Rejected"
+    },
+    {
+      "Code" : 30,
+      "Description" : "Approved"
+    },
+    {
+      "Code" : 40,
+      "Description" : "Self Approved"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+apis:
+  - id: store-orders-list
+    name: Get All Store Orders
+    version: v1
+    method: GET
+    path: /api/v1/store/orders
+    description: Returns all orders for the store. Filterable by status for the tab-based order view (New / Active / Done).
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: status
+        type: String
+        location: QUERY
+        required: false
+        validation:
+          pattern: ^(placed|accepted|dispatched|delivered|cancelled)$
+          errorMessage: Invalid order status filter
+      - name: page
+        type: Integer
+        location: QUERY
+        required: false
+        validation:
+          min: 0
+          errorMessage: Page must be 0 or greater
+      - name: limit
+        type: Integer
+        location: QUERY
+        required: false
+        validation:
+          min: 1
+          max: 100
+          errorMessage: Limit must be between 1 and 100
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: StoreOrder identifier
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: response data
+      - name: currentStatus
+        type: String
+        description: Current record status
+        defaultValue: ACTIVE
+      - name: fetchedAt
+        type: LocalDateTime
+        description: Data retrieval timestamp
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p147
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: SELECT
+        entity: StoreOrder
+        mapping:
+          status: "#{request.status}"
+          page: "#{request.page}"
+          limit: "#{request.limit}"

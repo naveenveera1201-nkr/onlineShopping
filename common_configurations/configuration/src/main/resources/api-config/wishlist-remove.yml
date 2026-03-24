@@ -1,0 +1,57 @@
+apis:
+  - id: wishlist-remove
+    name: Remove Item from Wishlist
+    version: v1
+    method: DELETE
+    path: /api/v1/customer/wishlist/{itemId}
+    description: Removes a saved item from the customer's wishlist.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: itemId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Item ID is required
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: ID of the deleted WishlistItem
+      - name: currentStatus
+        type: String
+        description: Status after deletion
+        defaultValue: DELETED
+      - name: message
+        type: String
+        description: Deletion confirmation message
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p132
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: DELETE
+        entity: WishlistItem
+        mapping:
+          itemId: "#{request.itemId}"

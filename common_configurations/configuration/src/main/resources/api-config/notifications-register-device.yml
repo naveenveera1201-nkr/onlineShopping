@@ -1,0 +1,90 @@
+apis:
+  - id: notifications-register-device
+    name: Register Device for Push Notifications
+    version: v1
+    method: POST
+    path: /api/v1/notifications/register-device
+    description: Registers an FCM (Android) or APNs (iOS) device token so the server can send push notifications for order updates.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: deviceToken
+        type: String
+        location: BODY
+        required: true
+        sensitive: true
+        validation:
+          minLength: 1
+          errorMessage: Device token is required
+      - name: platform
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(android|ios)$
+          errorMessage: platform must be 'android' or 'ios'
+      - name: userType
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(customer|store)$
+          errorMessage: userType must be 'customer' or 'store'
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated DeviceRegistration ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p133
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: DeviceRegistration
+        mapping:
+          deviceToken: "#{encrypted(request.deviceToken)}"
+          platform: "#{request.platform}"
+          userType: "#{request.userType}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/deviceregistration-event"

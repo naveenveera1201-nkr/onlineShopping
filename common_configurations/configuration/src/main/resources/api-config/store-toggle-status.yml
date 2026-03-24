@@ -1,0 +1,71 @@
+apis:
+  - id: store-toggle-status
+    name: Toggle Store Open / Closed
+    version: v1
+    method: PATCH
+    path: /api/v1/store/status
+    description: Instantly marks the store as open or closed. Closed stores are hidden from customer search results.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: isOpen
+        type: Boolean
+        location: BODY
+        required: true
+        validation:
+          customRule: MUST_BE_BOOLEAN
+          errorMessage: isOpen must be a boolean value
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Updated StoreStatus ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: updated data
+      - name: currentStatus
+        type: String
+        description: Record status after update
+        defaultValue: ACTIVE
+      - name: updatedAt
+        type: LocalDateTime
+        description: Update timestamp
+      - name: updatedBy
+        type: String
+        description: Actor who performed the update
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p138
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: UPDATE
+        entity: StoreStatus
+        mapping:
+          isOpen: "#{request.isOpen}"
+          updatedAt: "#{now()}"
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/storestatus-event"

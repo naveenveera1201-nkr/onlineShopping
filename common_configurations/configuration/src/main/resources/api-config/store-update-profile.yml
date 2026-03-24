@@ -1,0 +1,87 @@
+apis:
+  - id: store-update-profile
+    name: Update Store Profile
+    version: v1
+    method: PUT
+    path: /api/v1/store/profile
+    description: Updates store display name, address phone, or operating hours map.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: name
+        type: String
+        location: BODY
+        required: false
+        validation:
+          minLength: 1
+          maxLength: 100
+          errorMessage: Store name must be 1-100 characters
+      - name: phone
+        type: String
+        location: BODY
+        required: false
+        validation:
+          pattern: ^[0-9]{10}$
+          errorMessage: Phone number must be 10 digits
+      - name: hours
+        type: Object
+        location: BODY
+        required: false
+        validation:
+          errorMessage: hours must be a valid operating-hours object keyed by day
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Updated StoreProfile ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: updated data
+      - name: currentStatus
+        type: String
+        description: Record status after update
+        defaultValue: ACTIVE
+      - name: updatedAt
+        type: LocalDateTime
+        description: Update timestamp
+      - name: updatedBy
+        type: String
+        description: Actor who performed the update
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p137
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: UPDATE
+        entity: StoreProfile
+        mapping:
+          name: "#{request.name}"
+          phone: "#{request.phone}"
+          hours: "#{request.hours}"
+          updatedAt: "#{now()}"
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/storeprofile-event"

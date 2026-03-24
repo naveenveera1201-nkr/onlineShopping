@@ -1,0 +1,119 @@
+apis:
+  - id: stock-update-item
+    name: Update Stock Item (Full Update)
+    version: v1
+    method: PUT
+    path: /api/v1/store/stock/{itemId}
+    description: Updates any field on an existing stock item — name, price, quantity, or availability.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: itemId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Item ID is required
+      - name: name
+        type: String
+        location: BODY
+        required: false
+        validation:
+          minLength: 1
+          maxLength: 100
+          errorMessage: Item name must be 1-100 characters
+      - name: price
+        type: Double
+        location: BODY
+        required: false
+        validation:
+          min: 0.01
+          errorMessage: Price must be greater than 0
+      - name: qty
+        type: Integer
+        location: BODY
+        required: false
+        validation:
+          min: 0
+          errorMessage: Quantity must be 0 or greater
+      - name: available
+        type: Boolean
+        location: BODY
+        required: false
+        validation:
+          errorMessage: available must be a boolean
+      - name: sub
+        type: String
+        location: BODY
+        required: false
+        validation:
+          maxLength: 50
+          errorMessage: Sub-category must be under 50 characters
+      - name: emoji
+        type: String
+        location: BODY
+        required: false
+        validation:
+          maxLength: 5
+          errorMessage: Emoji must be a single emoji character
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Updated StockItem ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: updated data
+      - name: currentStatus
+        type: String
+        description: Record status after update
+        defaultValue: ACTIVE
+      - name: updatedAt
+        type: LocalDateTime
+        description: Update timestamp
+      - name: updatedBy
+        type: String
+        description: Actor who performed the update
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p143
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: UPDATE
+        entity: StockItem
+        mapping:
+          name: "#{request.name}"
+          price: "#{request.price}"
+          qty: "#{request.qty}"
+          available: "#{request.available}"
+          sub: "#{request.sub}"
+          emoji: "#{request.emoji}"
+          updatedAt: "#{now()}"
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/stockitem-event"
+    

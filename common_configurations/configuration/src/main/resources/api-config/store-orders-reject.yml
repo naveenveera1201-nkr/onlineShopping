@@ -1,0 +1,79 @@
+apis:
+  - id: store-orders-reject
+    name: Reject Order Entirely
+    version: v1
+    method: POST
+    path: /api/v1/store/orders/{orderId}/reject
+    description: Fully rejects an incoming order. Reserved stock is released and a full refund is initiated for prepaid orders.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: orderId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Order ID is required
+      - name: reason
+        type: String
+        location: BODY
+        required: false
+        validation:
+          pattern: ^(out_of_stock|store_closed|cannot_fulfil|other)$
+          errorMessage: 'reason must be: out_of_stock, store_closed, cannot_fulfil, or other'
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated StoreOrder ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p149
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: StoreOrder
+        mapping:
+          reason: "#{request.reason}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/storeorder-event"

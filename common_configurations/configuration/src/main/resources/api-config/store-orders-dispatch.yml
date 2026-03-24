@@ -1,0 +1,96 @@
+apis:
+  - id: store-orders-dispatch
+    name: Mark Order as Dispatched
+    version: v1
+    method: POST
+    path: /api/v1/store/orders/{orderId}/dispatch
+    description: Marks an accepted order as dispatched and optionally assigns a delivery agent. Activates real-time tracking.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - STORE
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: orderId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Order ID is required
+      - name: agentName
+        type: String
+        location: BODY
+        required: false
+        validation:
+          minLength: 1
+          maxLength: 100
+          errorMessage: Agent name must be 1-100 characters
+      - name: agentPhone
+        type: String
+        location: BODY
+        required: false
+        validation:
+          pattern: ^[0-9]{10}$
+          errorMessage: Agent phone must be 10 digits
+      - name: vehiclePlate
+        type: String
+        location: BODY
+        required: false
+        validation:
+          pattern: ^[A-Z0-9 ]{4,15}$
+          errorMessage: Invalid vehicle plate format
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated StoreOrder ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p150
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: StoreOrder
+        mapping:
+          agentName: "#{request.agentName}"
+          agentPhone: "#{request.agentPhone}"
+          vehiclePlate: "#{request.vehiclePlate}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/storeorder-event"

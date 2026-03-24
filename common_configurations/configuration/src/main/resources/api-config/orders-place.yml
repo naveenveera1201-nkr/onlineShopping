@@ -1,0 +1,136 @@
+apis:
+  - id: orders-place
+    name: Place New Order
+    version: v1
+    method: POST
+    path: /api/v1/orders
+    description: Creates a new order, reserves stock, and sends a push notification to the store. Returns order ID and initial
+      tracking state.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - CUSTOMER
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: storeId
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Store ID is required
+      - name: categoryId
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Category ID is required
+      - name: items
+        type: Array
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Order must contain at least one item
+      - name: addressId
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Delivery address ID is required
+      - name: paymentMethod
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(upi|netbanking|cod|wallet)$
+          errorMessage: Invalid payment method
+      - name: appointmentSlot
+        type: String
+        location: BODY
+        required: false
+        validation:
+          errorMessage: Appointment slot must be a valid datetime string
+      - name: notes
+        type: String
+        location: BODY
+        required: false
+        validation:
+          maxLength: 500
+          errorMessage: Notes must be under 500 characters
+      - name: urgency
+        type: String
+        location: BODY
+        required: false
+        validation:
+          pattern: ^(normal|urgent|express)$
+          errorMessage: urgency must be normal, urgent, or express
+      - name: orderType
+        type: String
+        location: BODY
+        required: false
+        validation:
+          pattern: ^(delivery|pickup|appointment)$
+          errorMessage: orderType must be delivery, pickup, or appointment
+    response:
+      successCode: 201
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated Order ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p121
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: Order
+        mapping:
+          storeId: "#{request.storeId}"
+          categoryId: "#{request.categoryId}"
+          items: "#{request.items}"
+          addressId: "#{request.addressId}"
+          paymentMethod: "#{request.paymentMethod}"
+          appointmentSlot: "#{request.appointmentSlot}"
+          notes: "#{request.notes}"
+          urgency: "#{request.urgency}"
+          orderType: "#{request.orderType}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/order-event"

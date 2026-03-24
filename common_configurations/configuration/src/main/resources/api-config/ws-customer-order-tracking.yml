@@ -1,0 +1,64 @@
+apis:
+  - id: ws-customer-order-tracking
+    name: Customer Order Tracking Socket
+    version: v1
+    method: WS
+    path: "wss://api.nammakadaitheru.in/ws/orders/{orderId}/track"
+    description: WebSocket connection for live order tracking. Server pushes agent GPS coordinates, ETA updates, and status
+      changes in real time.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: WEBSOCKET_TOKEN
+        roles:
+        - CUSTOMER
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 60
+        requestsPerHour: 1000
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: orderId
+        type: String
+        location: PATH
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Order ID is required
+      - name: token
+        type: String
+        location: QUERY
+        required: true
+        sensitive: true
+        validation:
+          minLength: 1
+          errorMessage: JWT access token is required
+    response:
+      successCode: 101
+      contentType: application/json
+      fields:
+      - name: event
+        type: String
+        description: WebSocket event type (status_update | location_update | eta_update)
+      - name: data
+        type: Object
+        description: Event payload object
+      - name: timestamp
+        type: LocalDateTime
+        description: Server-side event timestamp
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p152
+      type: WEBSOCKET
+      dataSource: primaryDb
+      operations:
+      - type: SUBSCRIBE
+        entity: OrderTracking
+#        description: Persistent WebSocket subscription — server pushes events to connected clients

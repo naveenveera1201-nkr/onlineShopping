@@ -1,0 +1,144 @@
+{
+	"Processes": [
+		{
+			"Code": "p100",
+			"ShortDesc": "SVCREQ",
+			"Description": "Service Request",
+			"InitialStatus": 10,
+			"ApprovalFlow": true,
+			"NoOfLevels": 2,
+			"ApprovalSteps": [
+				{
+					"Code": 1,
+					"Level": 1,
+					"Action": "Approve",
+					"PrevStatus": 10,
+					"NextStatus": 30
+				},
+				{
+					"Code": 2,
+					"Level": 1,
+					"Action": "Reject",
+					"PrevStatus": 10,
+					"NextStatus": 50
+				},
+				{
+					"Code": 3,
+					"Level": 1,
+					"Action": "Return",
+					"PrevStatus": 10,
+					"NextStatus": 100
+				},
+				{
+					"Code": 4,
+					"Level": 2,
+					"Action": "Approve",
+					"PrevStatus": 30,
+					"NextStatus": 60,
+					"IsTerminal": true
+				},
+				{
+					"Code": 5,
+					"Level": 2,
+					"Action": "Reject",
+					"PrevStatus": 30,
+					"NextStatus": 50
+				}
+			]
+		},
+		{
+			"Code": "p101",
+			"ShortDesc": "USER",
+			"Description": "User",
+			"InitialStatus": 10,
+			"ApprovalFlow": false
+		},
+		{
+			"Code": "p102",
+			"ShortDesc": "Register Invester",
+			"Description": "Invester",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "profile",
+			"ObjectName": "profile"
+		},
+		{
+			"Code": "p103",
+			"ShortDesc": "Register bankdetils",
+			"Description": "Invester",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "profile",
+			"ObjectName": "bankDetails"
+		},
+		{
+			"Code": "p104",
+			"ShortDesc": "Register kyc",
+			"Description": "Invester",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "profile",
+			"ObjectName": "kycDetails"
+		},
+		{
+			"Code": "p105",
+			"ShortDesc": "Register nominee",
+			"Description": "Invester",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "profile",
+			"ObjectName": "nomineeDetails"
+		},
+		{
+			"Code": "p106",
+			"ShortDesc": "get investor profiles",
+			"Description": "profiles",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "profile",
+			"ObjectName": "all"
+		},
+		{
+			"Code": "p107",
+			"ShortDesc": "get investor kyc",
+			"Description": "kyc details",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "profile",
+			"ObjectName": "kycDetails"
+		},
+		{
+			"Code": "p200",
+			"ShortDesc": "get All funds",
+			"Description": "get all fund details",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "funds"
+		},
+		{
+			"Code": "p201",
+			"ShortDesc": "get All funds categories",
+			"Description": "get all fund details",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "funds",
+			"ObjectName": "funds"
+		},
+		{
+			"Code": "p202",
+			"ShortDesc": "get specific funds categories list",
+			"Description": "get all fund details",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "funds"
+		},
+		{
+			"Code": "p203",
+			"ShortDesc": "get specific funds details",
+			"Description": "get specific funds details",
+			"InitialStatus": 60,
+			"ApprovalFlow": false,
+			"CollectionName": "funds"
+		}
+	]
+}

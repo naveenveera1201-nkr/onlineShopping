@@ -1,0 +1,20 @@
+spring:
+  config:
+    import:
+      classpath:config-master.yml
+#      - classpath:api-config/user-registration.yml
+#      - classpath:api-config/user-details.yml
+#      - classpath:api-config/user-modification.yml
+#      - classpath:api-config/apis.yml
+  application:
+    name: myFirstApplication
+server:
+  port: 8060
+#apis: [] 
+#springdoc:
+#  api-docs:
+#    enabled: true
+#  swagger-ui:
+#    enabled: true
+#    path: /swagger-ui.html
+

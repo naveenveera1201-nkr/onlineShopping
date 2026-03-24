@@ -1,0 +1,117 @@
+apis:
+  - id: auth-verify-otp
+    name: Verify OTP & Issue Token
+    version: v1
+    method: POST
+    path: /api/v1/auth/verify-otp
+    description: Validates the OTP submitted by the user and returns a JWT access token and refresh token. Creates the account
+      if purpose=register.
+    enabled: true
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+        - PUBLIC
+      authorization:
+        enabled: false
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 10
+        requestsPerHour: 100
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: identifier
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Identifier is required
+      - name: otp
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 4
+          maxLength: 4
+          pattern: ^[0-9]{4}$
+          errorMessage: OTP must be a 4-digit number
+      - name: userType
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(customer|store)$
+          errorMessage: userType must be 'customer' or 'store'
+      - name: purpose
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(register|login)$
+          errorMessage: purpose must be 'register' or 'login'
+      - name: name
+        type: String
+        location: BODY
+        required: false
+        validation:
+          minLength: 1
+          maxLength: 100
+          errorMessage: Name required for registration
+      - name: email
+        type: String
+        location: BODY
+        required: false
+        validation:
+          pattern: ^[A-Za-z0-9+_.-]+@(.+)$
+          customRule: VALID_EMAIL
+          errorMessage: Invalid email format
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated AuthToken ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: p102
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: AuthToken
+        mapping:
+          identifier: "#{request.identifier}"
+          otp: "#{request.otp}"
+          userType: "#{request.userType}"
+          purpose: "#{request.purpose}"
+          name: "#{request.name}"
+          email: "#{request.email}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/authtoken-event"
