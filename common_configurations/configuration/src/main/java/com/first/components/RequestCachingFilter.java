@@ -27,7 +27,6 @@ import com.first.services.ResponseBuilders;
 import com.first.services.SecurityService;
 import com.first.services.ValidationService;
 
-import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
@@ -35,11 +34,12 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @Order(1)
 @Slf4j
-public class RequestCachingFilter  implements Filter{
+public class RequestCachingFilter  extends OncePerRequestFilter {
 
 	@Autowired
 	private ApiConfigLoader configLoader;
@@ -68,6 +68,8 @@ public class RequestCachingFilter  implements Filter{
 		HttpServletResponse httpResponse = (HttpServletResponse) response;
 		ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(httpRequest, 0);
 		ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(httpResponse);
+		
+		chain.doFilter(wrappedRequest, wrappedResponse);
 
 		/** Store request Body **/
 		long start = System.currentTimeMillis();
@@ -180,7 +182,7 @@ public class RequestCachingFilter  implements Filter{
 	        try {
 	        	
 	            // 1. Security validation
-//	            securityService.validateSecurity(apiDef, request, headers);
+	            securityService.validateSecurity(apiDef, request, headers);
 
 	            // 2. Rate limiting
 //	            securityService.enforceRateLimit(apiDef, request);
@@ -310,5 +312,12 @@ public class RequestCachingFilter  implements Filter{
 
 		        return new String(buf, StandardCharsets.UTF_8);
 		    }
+
+		@Override
+		protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+				FilterChain filterChain) throws ServletException, IOException {
+			log.info("doFilterInternal called...");
+			
+		}
 
 }
