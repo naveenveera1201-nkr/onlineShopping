@@ -1,9 +1,10 @@
 package com.service.handlers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.repository.NktDynamicRepository;
-
 import java.util.Map;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.models.nkt.NktProcessDefinition;
+import com.repository.NktDynamicRepository;
 
 /**
  * Contract for a custom NKT operation handler.
@@ -23,5 +24,5 @@ import java.util.Map;
 @FunctionalInterface
 public interface NktOperationHandler {
     String handle(Map<String, Object> data, String userId,
-                  NktDynamicRepository repo, ObjectMapper mapper);
+                  NktDynamicRepository repo, ObjectMapper mapper, NktProcessDefinition def);
 }

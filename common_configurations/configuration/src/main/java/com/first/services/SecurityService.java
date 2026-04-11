@@ -4,37 +4,64 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.crypto.SecretKey;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.first.dto.ApiDefinition;
-import com.first.dto.SecurityConfig;
+import com.first.dto.ApiSecurityConfig;
+import com.first.dto.ApiSecurityConfig.AuthenticationConfig;
+import com.first.exception.ApiSecurityException;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Per-API security enforcement based on the YAML security config.
+ *
+ * JWT validation is handled upstream by JwtAuthenticationFilter which populates
+ * the Spring SecurityContext. This service only performs:
+ *   1. Role checking against the YAML-declared roles.
+ *   2. In-memory rate limiting per api+client.
+ *
+ * JWT is intentionally NOT re-validated here to avoid duplication.
+ */
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class SecurityService {
 
-    private static final String JWT_SECRET = "your-secret-key-change-in-production";
+
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+    
+//    private static final String JWT_SECRET = "your-secret-key-change-in-production";
     private Map<String, RateLimiter> rateLimiters = new ConcurrentHashMap<>();
 
     public void validateSecurity(ApiDefinition apiDef,
-                                 HttpServletRequest request,
-                                 Map<String, String> headers) {
-        if (apiDef.getSecurity() == null) return;
+                                 HttpServletRequest request, Map<String, String> headers) {
+		
+    	if (apiDef.getSecurity() == null)
+			return;
 
-        SecurityConfig.AuthenticationConfig auth =
-                apiDef.getSecurity().getAuthentication();
+		AuthenticationConfig auth = apiDef.getSecurity().getAuthentication();
 
-        if (auth != null && auth.isEnabled()) {
-            String token = extractToken(headers, auth);
-            validateToken(token, auth);
-        }
-    }
+		if (auth != null && auth.isEnabled()) {
+			String token = extractToken(headers, auth);
+			validateToken(token, auth);
+		}
+	}
 
     private String extractToken(Map<String, String> headers,
-                                SecurityConfig.AuthenticationConfig auth) {
+    		AuthenticationConfig auth) {
         String headerName = auth.getHeaderName() != null ?
                 auth.getHeaderName() : "Authorization";
 
@@ -47,7 +74,7 @@ public class SecurityService {
     }
 
     private void validateToken(String token,
-                               SecurityConfig.AuthenticationConfig auth) {
+    		AuthenticationConfig auth) {
         switch (auth.getType().toUpperCase()) {
             case "JWT":
                 validateJWT(token, auth.getRoles());
@@ -74,17 +101,29 @@ public class SecurityService {
 //                    .setSigningKey(JWT_SECRET.getBytes())
 //                    .parseClaimsJws(token)
 //                    .getBody();
+            
+            Claims claims = Jwts.parser()
+            .verifyWith(getSigningKey())
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
 
-//            String role = claims.get("role", String.class);
-//            if (allowedRoles != null && allowedRoles.length > 0) {
-//                boolean hasRole = Arrays.asList(allowedRoles).contains(role);
-//                if (!hasRole) {
-//                    throw new SecurityException("Insufficient permissions");
-//                }
-//            }
+            String role = claims.get("userType", String.class);
+           
+            if (allowedRoles != null && allowedRoles.length > 0) {
+                boolean hasRole = Arrays.asList(allowedRoles).contains(role);
+                if (!hasRole) {
+                    throw new SecurityException("Insufficient permissions");
+                }
+            }
+            
         } catch (Exception e) {
             throw new SecurityException("Invalid or expired token: " + e.getMessage());
         }
+    }
+    
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
 
     private void validateApiKey(String apiKey) {
@@ -107,63 +146,98 @@ public class SecurityService {
         }
     }
 
-    public void enforceRateLimit(ApiDefinition apiDef, HttpServletRequest request) {
-        SecurityConfig.RateLimitConfig rateLimit =
-                apiDef.getSecurity().getRateLimit();
 
-        if (rateLimit == null || !rateLimit.isEnabled()) return;
+    /**
+     * Checks that the authenticated user has one of the roles declared in the
+     * YAML security config. Skips the check for PUBLIC role.
+     */
+    public void validateRoles(ApiDefinition apiDef) {
+        ApiSecurityConfig security = apiDef.getSecurity();
+        if (security == null) return;
 
-        String clientId = getClientIdentifier(request);
-        String key = apiDef.getId() + ":" + clientId;
+        ApiSecurityConfig.AuthenticationConfig auth = security.getAuthentication();
+        if (auth == null || !auth.isEnabled()) return;
 
-        RateLimiter limiter = rateLimiters.computeIfAbsent(key,
-                k -> new RateLimiter(rateLimit.getRequestsPerMinute(),
-                        rateLimit.getRequestsPerHour()));
+        String[] roles = auth.getRoles();
+        if (roles == null || roles.length == 0
+                || Arrays.asList(roles).contains("PUBLIC")) {
+            return; // public endpoint — no role check needed
+        }
 
-        if (!limiter.allowRequest()) {
-            throw new SecurityException("Rate limit exceeded");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ApiSecurityException("Authentication required");
+        }
+
+        boolean hasRole = authentication.getAuthorities().stream()
+                .anyMatch(a -> Arrays.asList(roles).stream()
+                        .anyMatch(r -> a.getAuthority().equalsIgnoreCase("ROLE_" + r)));
+
+        if (!hasRole) {
+            log.warn("Access denied for user={} to api={}, requiredRoles={}",
+                    authentication.getPrincipal(), apiDef.getId(), Arrays.toString(roles));
+            throw new ApiSecurityException("Insufficient permissions for this endpoint");
         }
     }
 
-    private String getClientIdentifier(HttpServletRequest request) {
-        // Try to get user ID from token, otherwise use IP
+    // ─────────────────────────────────────────────────────────────────────────
+    // Rate limiting (in-memory; replace with Bucket4j+Redis for production)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public void enforceRateLimit(ApiDefinition apiDef, HttpServletRequest request) {
+        ApiSecurityConfig security = apiDef.getSecurity();
+        if (security == null || security.getRateLimit() == null) return;
+
+        ApiSecurityConfig.RateLimitConfig rl = security.getRateLimit();
+        if (!rl.isEnabled()) return;
+
+        String clientId = resolveClientId(request);
+        String key      = apiDef.getId() + ":" + clientId;
+
+        RateLimiter limiter = rateLimiters.computeIfAbsent(key,
+                k -> new RateLimiter(rl.getRequestsPerMinute(), rl.getRequestsPerHour()));
+
+        if (!limiter.allowRequest()) {
+            log.warn("Rate limit exceeded: api={}, client={}", apiDef.getId(), clientId);
+            throw new ApiSecurityException("Rate limit exceeded. Please try again later.");
+        }
+    }
+
+    /** Prefers authenticated userId over IP address as the rate-limit key. */
+    private String resolveClientId(HttpServletRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()
+                && !"anonymousUser".equals(auth.getPrincipal())) {
+            return auth.getPrincipal().toString();
+        }
         return request.getRemoteAddr();
     }
 
-    private static class RateLimiter {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Inner: sliding-window rate limiter
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static final class RateLimiter {
         private final int maxPerMinute;
         private final int maxPerHour;
-        private long minuteWindow;
-        private long hourWindow;
-        private int minuteCount;
-        private int hourCount;
+        private long      minuteWindowStart;
+        private long      hourWindowStart;
+        private int       minuteCount;
+        private int       hourCount;
 
-        public RateLimiter(int maxPerMinute, int maxPerHour) {
-            this.maxPerMinute = maxPerMinute;
-            this.maxPerHour = maxPerHour;
-            this.minuteWindow = System.currentTimeMillis();
-            this.hourWindow = System.currentTimeMillis();
+        RateLimiter(int maxPerMinute, int maxPerHour) {
+            this.maxPerMinute    = maxPerMinute;
+            this.maxPerHour      = maxPerHour;
+            long now             = System.currentTimeMillis();
+            this.minuteWindowStart = now;
+            this.hourWindowStart   = now;
         }
 
-        public synchronized boolean allowRequest() {
+        synchronized boolean allowRequest() {
             long now = System.currentTimeMillis();
-
-            // Check minute window
-            if (now - minuteWindow > 60000) {
-                minuteWindow = now;
-                minuteCount = 0;
-            }
-
-            // Check hour window
-            if (now - hourWindow > 3600000) {
-                hourWindow = now;
-                hourCount = 0;
-            }
-
-            if (minuteCount >= maxPerMinute || hourCount >= maxPerHour) {
-                return false;
-            }
-
+            if (now - minuteWindowStart > 60_000L)  { minuteWindowStart = now; minuteCount = 0; }
+            if (now - hourWindowStart   > 3_600_000L){ hourWindowStart   = now; hourCount   = 0; }
+            if (minuteCount >= maxPerMinute || hourCount >= maxPerHour) return false;
             minuteCount++;
             hourCount++;
             return true;

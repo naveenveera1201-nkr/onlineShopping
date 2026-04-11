@@ -53,7 +53,7 @@ public class NktOrderHandler {
 
     /* ── ORDER_VALIDATE_CART ────────────────────────────────────────────── */
     public NktOperationHandler validateCart() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             List<Map<String, Object>> updated = new ArrayList<>();
             for (Map<String, Object> item : list(data, "items")) {
                 String itemId = (String) item.get("itemId");
@@ -70,7 +70,7 @@ public class NktOrderHandler {
 
     /* ── ORDER_PLACE ────────────────────────────────────────────────────── */
     public NktOperationHandler placeOrder() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             List<Map<String, Object>> orderItems = list(data, "items").stream().map(i -> {
                 String itemId = (String) i.get("itemId");
                 Map<String, Object> si = repo.findById("stockItems", itemId)
@@ -112,7 +112,7 @@ public class NktOrderHandler {
 
     /* ── ORDER_HISTORY ──────────────────────────────────────────────────── */
     public NktOperationHandler orderHistory() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String status = str(data, "status");
             int page  = data.get("page")  != null ? Integer.parseInt(str(data, "page"))  : 0;
             int limit = data.get("limit") != null ? Integer.parseInt(str(data, "limit")) : 20;
@@ -126,7 +126,7 @@ public class NktOrderHandler {
 
     /* ── ORDER_GET_DETAIL ───────────────────────────────────────────────── */
     public NktOperationHandler orderGetDetail() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String orderId = str(data, "orderId");
             Map<String, Object> order = repo.findById("orders", orderId)
                     .orElseThrow(() -> new RuntimeException("Order not found"));
@@ -137,7 +137,7 @@ public class NktOrderHandler {
 
     /* ── ORDER_TRACK ────────────────────────────────────────────────────── */
     public NktOperationHandler trackOrder() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String orderId = str(data, "orderId");
             Map<String, Object> order = repo.findById("orders", orderId)
                     .orElseThrow(() -> new RuntimeException("Order not found"));
@@ -158,7 +158,7 @@ public class NktOrderHandler {
 
     /* ── ORDER_CANCEL ───────────────────────────────────────────────────── */
     public NktOperationHandler cancelOrder() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String orderId = str(data, "orderId");
             Map<String, Object> order = repo.findById("orders", orderId)
                     .orElseThrow(() -> new RuntimeException("Order not found"));
@@ -174,7 +174,7 @@ public class NktOrderHandler {
 
     /* ── ORDER_RATE ─────────────────────────────────────────────────────── */
     public NktOperationHandler rateOrder() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String orderId = str(data, "orderId");
             Map<String, Object> order = repo.findById("orders", orderId)
                     .orElseThrow(() -> new RuntimeException("Order not found"));
@@ -194,7 +194,7 @@ public class NktOrderHandler {
 
     /* ── WISHLIST_ADD ───────────────────────────────────────────────────── */
     public NktOperationHandler wishlistAdd() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String itemId = str(data, "itemId");
             Map<String, Object> si = repo.findById("stockItems", itemId)
                     .orElseThrow(() -> new RuntimeException("Item not found: " + itemId));
@@ -216,7 +216,7 @@ public class NktOrderHandler {
 
     /* ── WISHLIST_REMOVE ────────────────────────────────────────────────── */
     public NktOperationHandler wishlistRemove() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String itemId = str(data, "itemId");
             Map<String, Object> wi = repo.findOneByCriteria("wishlist",
                     Map.of("customerId", userId, "itemId", itemId))
@@ -229,7 +229,7 @@ public class NktOrderHandler {
 
     /* ── STORE_ORDER_LIST ───────────────────────────────────────────────── */
     public NktOperationHandler storeOrderList() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId = resolveStoreId(userId, repo);
             String status  = str(data, "status");
             int page  = data.get("page")  != null ? Integer.parseInt(str(data, "page"))  : 0;
@@ -244,7 +244,7 @@ public class NktOrderHandler {
 
     /* ── STORE_ORDER_ACCEPT ─────────────────────────────────────────────── */
     public NktOperationHandler storeOrderAccept() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId = resolveStoreId(userId, repo);
             String orderId = str(data, "orderId");
             Map<String, Object> order = getStoreOrder(orderId, storeId, repo);
@@ -260,7 +260,7 @@ public class NktOrderHandler {
 
     /* ── STORE_ORDER_REJECT ─────────────────────────────────────────────── */
     public NktOperationHandler storeOrderReject() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId = resolveStoreId(userId, repo);
             String orderId = str(data, "orderId");
             Map<String, Object> order = getStoreOrder(orderId, storeId, repo);
@@ -276,7 +276,7 @@ public class NktOrderHandler {
 
     /* ── STORE_ORDER_DISPATCH ───────────────────────────────────────────── */
     public NktOperationHandler storeOrderDispatch() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId = resolveStoreId(userId, repo);
             String orderId = str(data, "orderId");
             Map<String, Object> order = getStoreOrder(orderId, storeId, repo);
@@ -296,7 +296,7 @@ public class NktOrderHandler {
 
     /* ── STORE_ORDER_DELIVER ────────────────────────────────────────────── */
     public NktOperationHandler storeOrderDeliver() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId = resolveStoreId(userId, repo);
             String orderId = str(data, "orderId");
             Map<String, Object> order = getStoreOrder(orderId, storeId, repo);

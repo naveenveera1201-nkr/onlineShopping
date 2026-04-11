@@ -1,13 +1,21 @@
 package com.security;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
+import java.util.Date;
+import java.util.Map;
+
+import javax.crypto.SecretKey;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
+import com.repository.NktDynamicRepository;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtTokenProvider {
@@ -20,13 +28,26 @@ public class JwtTokenProvider {
 
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
+    
+    @Autowired
+    private NktDynamicRepository repo;
+
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
 
-    public String generateAccessToken(String userId, String userType) {
+    public String generateAccessToken(String userId, String userType, String jti) {
+//        return Jwts.builder()
+//                .subject(userId)
+//                .claim("userType", userType)
+//                .issuedAt(new Date())
+//                .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
+//                .signWith(getSigningKey())
+//                .compact();
+        
         return Jwts.builder()
+                .id(jti)
                 .subject(userId)
                 .claim("userType", userType)
                 .issuedAt(new Date())
@@ -35,8 +56,17 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String generateRefreshToken(String userId) {
+    public String generateRefreshToken(String userId, String jti) {
+//        return Jwts.builder()
+//                .subject(userId)
+//                .claim("type", "refresh")
+//                .issuedAt(new Date())
+//                .expiration(new Date(System.currentTimeMillis() + refreshExpiration))
+//                .signWith(getSigningKey())
+//                .compact();
+        
         return Jwts.builder()
+                .id(jti)
                 .subject(userId)
                 .claim("type", "refresh")
                 .issuedAt(new Date())
@@ -60,6 +90,10 @@ public class JwtTokenProvider {
     public String extractUserType(String token) {
         return extractAllClaims(token).get("userType", String.class);
     }
+    
+    public String extractUId(String token) {
+        return extractAllClaims(token).getId();
+    }
 
     public boolean isTokenValid(String token) {
         try {
@@ -69,4 +103,28 @@ public class JwtTokenProvider {
             return false;
         }
     }
+    
+    public boolean isTokenValidWithDb(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+
+            String jti = claims.getId();
+
+            Map<String, Object> tokenDoc = repo.findOneByCriteria(
+                    "auth_tokens",
+                    Map.of("jti", jti, "isValid", true, "isLoggedOut", false)
+            ).orElse(null);
+
+            if (tokenDoc == null) return false;
+
+            Date expiry = claims.getExpiration();
+            if (expiry.before(new Date())) return false;
+
+            return true;
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
 }

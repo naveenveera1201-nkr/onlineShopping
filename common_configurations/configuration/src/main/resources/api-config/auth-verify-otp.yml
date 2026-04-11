@@ -32,6 +32,13 @@ apis:
         validation:
           minLength: 1
           errorMessage: Identifier is required
+      - name: identifierType
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(phone|email)$
+          errorMessage: identifierType must be 'phone' or 'email'
       - name: otp
         type: String
         location: BODY
@@ -96,7 +103,7 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p102
+      processCode: nkt.auth.verify_otp
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

@@ -1,5 +1,14 @@
 package com.first.services;
 
+import com.first.components.CustomValidationRules;
+import com.first.dto.ApiDefinition;
+import com.first.dto.ParameterDefinition;
+import com.first.exception.ValidationException;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -7,192 +16,164 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import com.first.components.CustomValidationRules;
-import com.first.dto.ApiDefinition;
-import com.first.dto.ParameterDefinition;
-
-import jakarta.servlet.http.HttpServletRequest;
-
+/**
+ * Validates incoming request parameters against the rules defined in the
+ * API YAML config (required, minLength, maxLength, pattern, allowedValues, etc.).
+ * Returns a clean map of typed, validated parameter values.
+ */
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class ValidationService {
 
-    @Autowired
-    private CustomValidationRules customRules;
+    private final CustomValidationRules customRules;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Main entry point
+    // ─────────────────────────────────────────────────────────────────────────
 
     public Map<String, Object> validate(ApiDefinition apiDef,
                                         Map<String, Object> body,
                                         HttpServletRequest request,
                                         Map<String, String> headers) {
-        Map<String, Object> validatedParams = new HashMap<>();
+        Map<String, Object> validated = new HashMap<>();
 
-        if (apiDef.getRequest() == null ||
-                apiDef.getRequest().getParameters() == null) {
-            return validatedParams;
+        if (apiDef.getRequest() == null || apiDef.getRequest().getParameters() == null) {
+            return validated;
         }
 
         for (ParameterDefinition param : apiDef.getRequest().getParameters()) {
             Object value = extractValue(param, body, request, headers);
 
-            // Check required
-            if (param.isRequired() && (value == null || value.toString().isEmpty())) {
+            // Required check
+            if (param.isRequired() && (value == null || value.toString().isBlank())) {
                 throw new ValidationException(param.getName() + " is required");
             }
 
-            // Apply default value
+            // Apply default
             if (value == null && param.getDefaultValue() != null) {
                 value = param.getDefaultValue();
             }
 
-            // Validate if value exists
-            if (value != null && !value.toString().isEmpty()) {
+            // Validate and type-convert
+            if (value != null && !value.toString().isBlank()) {
                 validateParameter(param, value);
                 value = convertType(value, param.getType());
-                validatedParams.put(param.getName(), value);
+                validated.put(param.getName(), value);
             }
         }
 
-        return validatedParams;
+        log.debug("Validation passed for api={}, params={}", apiDef.getId(), validated.keySet());
+        return validated;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Extraction
+    // ─────────────────────────────────────────────────────────────────────────
 
     private Object extractValue(ParameterDefinition param,
                                 Map<String, Object> body,
                                 HttpServletRequest request,
                                 Map<String, String> headers) {
-        switch (param.getLocation().toUpperCase()) {
-            case "BODY":
-                return body != null ? body.get(param.getName()) : null;
-            case "QUERY":
-                return request.getParameter(param.getName());
-            case "PATH":
-                return extractPathVariable(param.getName(), request.getRequestURI());
-            case "HEADER":
-                return headers.get(param.getName().toLowerCase());
-            default:
-                return null;
-        }
+        return switch (param.getLocation().toUpperCase()) {
+            case "BODY"   -> body != null ? body.get(param.getName()) : null;
+            case "QUERY"  -> request.getParameter(param.getName());
+            case "PATH"   -> extractPathVariable(param.getName(), request);
+            case "HEADER" -> headers.get(param.getName().toLowerCase());
+            default       -> null;
+        };
     }
 
-    private String extractPathVariable(String varName, String uri) {
-        // Extract path variable from URI
-        // This is simplified - enhance based on your needs
-        String[] parts = uri.split("/");
+    /**
+     * Extracts a path variable from the request attributes set by Spring MVC.
+     * Falls back to the last URI segment for simple cases.
+     */
+    @SuppressWarnings("unchecked")
+    private Object extractPathVariable(String varName, HttpServletRequest request) {
+        Object uriVars = request.getAttribute(
+                "org.springframework.web.servlet.HandlerMapping.uriTemplateVariables");
+        if (uriVars instanceof Map) {
+            Object val = ((Map<String, Object>) uriVars).get(varName);
+            if (val != null) return val;
+        }
+        // Fallback: last segment of URI (simple id-only paths)
+        String[] parts = request.getRequestURI().split("/");
         return parts.length > 0 ? parts[parts.length - 1] : null;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Validation rules
+    // ─────────────────────────────────────────────────────────────────────────
+
     private void validateParameter(ParameterDefinition param, Object value) {
-        ParameterDefinition.ValidationConfig validation = param.getValidation();
-        if (validation == null) return;
+        ParameterDefinition.ValidationConfig v = param.getValidation();
+        if (v == null) return;
 
-        String strValue = value.toString();
-        String errorMsg = validation.getErrorMessage() != null ?
-                validation.getErrorMessage() : param.getName() + " validation failed";
+        String str      = value.toString();
+        String errorMsg = v.getErrorMessage() != null ? v.getErrorMessage()
+                        : param.getName() + " validation failed";
 
-        // Length validation
-        if (validation.getMinLength() != null &&
-                strValue.length() < validation.getMinLength()) {
+        if (v.getMinLength() != null && str.length() < v.getMinLength())
             throw new ValidationException(errorMsg);
-        }
 
-        if (validation.getMaxLength() != null &&
-                strValue.length() > validation.getMaxLength()) {
+        if (v.getMaxLength() != null && str.length() > v.getMaxLength())
             throw new ValidationException(errorMsg);
-        }
 
-        // Numeric validation
-        if (isNumericType(param.getType())) {
-            validateNumeric(param, value, validation, errorMsg);
-        }
+        if (isNumericType(param.getType()))
+            validateNumeric(param, value, v, errorMsg);
 
-        // Pattern validation
-        if (validation.getPattern() != null) {
-            if (!Pattern.matches(validation.getPattern(), strValue)) {
-                throw new ValidationException(errorMsg);
-            }
-        }
+        if (v.getPattern() != null && !Pattern.matches(v.getPattern(), str))
+            throw new ValidationException(errorMsg);
 
-        // Allowed values
-        if (validation.getAllowedValues() != null) {
-            boolean valid = Arrays.asList(validation.getAllowedValues())
-                    .contains(strValue);
-            if (!valid) {
-                throw new ValidationException(errorMsg + ". Allowed values: " +
-                        Arrays.toString(validation.getAllowedValues()));
-            }
-        }
+        if (v.getAllowedValues() != null
+                && !Arrays.asList(v.getAllowedValues()).contains(str))
+            throw new ValidationException(
+                    errorMsg + ". Allowed: " + Arrays.toString(v.getAllowedValues()));
 
-        // Custom rules
-        if (validation.getCustomRule() != null) {
-            customRules.validate(validation.getCustomRule(), value, errorMsg);
-        }
+        if (v.getCustomRule() != null)
+            customRules.validate(v.getCustomRule(), value, errorMsg);
     }
 
     private void validateNumeric(ParameterDefinition param, Object value,
-                                 ParameterDefinition.ValidationConfig validation,
-                                 String errorMsg) {
+                                 ParameterDefinition.ValidationConfig v, String errorMsg) {
         try {
-            double numValue = Double.parseDouble(value.toString());
-
-            if (validation.getMin() != null && numValue < validation.getMin()) {
-                throw new ValidationException(errorMsg);
-            }
-
-            if (validation.getMax() != null && numValue > validation.getMax()) {
-                throw new ValidationException(errorMsg);
-            }
-
-            // Scale validation for BigDecimal
-            if (validation.getScale() != null && param.getType().equals("BigDecimal")) {
-                BigDecimal bd = new BigDecimal(value.toString());
-                if (bd.scale() > validation.getScale()) {
-                    throw new ValidationException(
-                            "Maximum " + validation.getScale() + " decimal places allowed");
-                }
+            double num = Double.parseDouble(value.toString());
+            if (v.getMin() != null && num < v.getMin())  throw new ValidationException(errorMsg);
+            if (v.getMax() != null && num > v.getMax())  throw new ValidationException(errorMsg);
+            if (v.getScale() != null && "BigDecimal".equals(param.getType())) {
+                if (new BigDecimal(value.toString()).scale() > v.getScale())
+                    throw new ValidationException("Max " + v.getScale() + " decimal places allowed");
             }
         } catch (NumberFormatException e) {
             throw new ValidationException("Invalid numeric value for " + param.getName());
         }
     }
 
-    private boolean isNumericType(String type) {
-        return type.equals("Integer") || type.equals("Long") ||
-                type.equals("Double") || type.equals("BigDecimal") ||
-                type.equals("Float");
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Type conversion
+    // ─────────────────────────────────────────────────────────────────────────
 
     private Object convertType(Object value, String type) {
         if (value == null) return null;
-
         try {
-            switch (type) {
-                case "Integer":
-                    return Integer.parseInt(value.toString());
-                case "Long":
-                    return Long.parseLong(value.toString());
-                case "Double":
-                    return Double.parseDouble(value.toString());
-                case "Float":
-                    return Float.parseFloat(value.toString());
-                case "BigDecimal":
-                    return new BigDecimal(value.toString());
-                case "Boolean":
-                    return Boolean.parseBoolean(value.toString());
-                case "LocalDate":
-                    return LocalDate.parse(value.toString());
-                default:
-                    return value.toString();
-            }
+            return switch (type) {
+                case "Integer"    -> Integer.parseInt(value.toString());
+                case "Long"       -> Long.parseLong(value.toString());
+                case "Double"     -> Double.parseDouble(value.toString());
+                case "Float"      -> Float.parseFloat(value.toString());
+                case "BigDecimal" -> new BigDecimal(value.toString());
+                case "Boolean"    -> Boolean.parseBoolean(value.toString());
+                case "LocalDate"  -> LocalDate.parse(value.toString());
+                default           -> value.toString();
+            };
         } catch (Exception e) {
             throw new ValidationException(
-                    "Cannot convert value to " + type + ": " + e.getMessage());
+                    "Cannot convert '" + value + "' to " + type + ": " + e.getMessage());
         }
     }
 
-    public static class ValidationException extends RuntimeException {
-        public ValidationException(String message) {
-            super(message);
-        }
+    private boolean isNumericType(String type) {
+        return "Integer".equals(type) || "Long".equals(type) || "Double".equals(type)
+            || "BigDecimal".equals(type) || "Float".equals(type);
     }
 }

@@ -29,7 +29,7 @@ public class NktPaymentHandler {
 
     /* ── PAYMENT_INITIATE ───────────────────────────────────────────────── */
     public NktOperationHandler initiatePayment() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String method   = str(data, "method");
             String orderId  = str(data, "orderId");
             String upiId    = str(data, "upiId");
@@ -58,7 +58,7 @@ public class NktPaymentHandler {
 
     /* ── PAYMENT_WEBHOOK ────────────────────────────────────────────────── */
     public NktOperationHandler paymentWebhook() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             // TODO: verify signature, update payment & order status
             String gatewayId = str(data, "paymentId");
             String status    = str(data, "status");

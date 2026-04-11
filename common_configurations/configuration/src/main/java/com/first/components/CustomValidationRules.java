@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
+import com.first.exception.ValidationException;
 import com.first.services.ValidationService;
 
 @Component
@@ -39,19 +40,19 @@ public class CustomValidationRules {
 
     private void validateEmail(Object value, String errorMsg) {
         if (!EMAIL_PATTERN.matcher(value.toString()).matches()) {
-            throw new ValidationService.ValidationException(errorMsg);
+            throw new ValidationException(errorMsg);
         }
     }
 
     private void validateNoSpecialChars(Object value, String errorMsg) {
         if (!value.toString().matches("^[a-zA-Z0-9_]+$")) {
-            throw new ValidationService.ValidationException(errorMsg);
+            throw new ValidationException(errorMsg);
         }
     }
 
     private void validateMustBeTrue(Object value, String errorMsg) {
         if (!Boolean.parseBoolean(value.toString())) {
-            throw new ValidationService.ValidationException(errorMsg);
+            throw new ValidationException(errorMsg);
         }
     }
 
@@ -59,16 +60,16 @@ public class CustomValidationRules {
         try {
             LocalDate date = LocalDate.parse(value.toString());
             if (date.isAfter(LocalDate.now())) {
-                throw new ValidationService.ValidationException(errorMsg);
+                throw new ValidationException(errorMsg);
             }
         } catch (Exception e) {
-            throw new ValidationService.ValidationException("Invalid date format");
+            throw new ValidationException("Invalid date format");
         }
     }
 
     private void validatePhoneNumber(Object value, String errorMsg) {
         if (!value.toString().matches("^[0-9]{10}$")) {
-            throw new ValidationService.ValidationException(errorMsg);
+            throw new ValidationException(errorMsg);
         }
     }
 }

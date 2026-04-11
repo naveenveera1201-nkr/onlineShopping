@@ -2,7 +2,7 @@
 	"NktProcesses": [
 		{
 			"Code": "nkt.auth.send_otp",
-			"Collection": "otpRecords",
+			"Collection": "otp_records",
 			"Operation": "CUSTOM",
 			"HandlerKey": "AUTH_SEND_OTP",
 			"Protected": false,
@@ -21,8 +21,10 @@
 			"Protected": false,
 			"RequiredFields": [
 				"identifier",
-				"otp",
-				"purpose"
+				"identifierType",
+				"userType",
+				"purpose",
+				"otp"
 			]
 		},
 		{

@@ -1,24 +1,19 @@
 spring:
   config:
-    import:
-      classpath:config-master.yml
-#      - classpath:api-config/user-registration.yml
-#      - classpath:api-config/user-details.yml
-#      - classpath:api-config/user-modification.yml
-#      - classpath:api-config/apis.yml
+    import: classpath:config-master.yml
   application:
     name: myFirstApplication
+
 server:
   port: 8060
-#apis: [] 
-#springdoc:
-#  api-docs:
-#    enabled: true
-#  swagger-ui:
-#    enabled: true
-#    path: /swagger-ui.html
+
+# ── JWT ───────────────────────────────────────────────────────────────────────
 jwt:
   secret: bm10LXNlY3JldC1rZXktZm9yLW5hbW1ha2FkYWl0aGVydS1hcGktMjAyNA==
-  expiration: 900000
-  refresh-expiration: 2592000000
+  expiration: 900000          # 15 min in ms
+  refresh-expiration: 2592000000  # 30 days in ms
 
+# ── Downstream services ───────────────────────────────────────────────────────
+services:
+  nkt-process:
+    url: http://localhost:8070

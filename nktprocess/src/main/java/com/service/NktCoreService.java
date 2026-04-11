@@ -258,7 +258,7 @@ public class NktCoreService {
         NktOperationHandler handler = handlers.get(key);
         if (handler == null)
             throw new RuntimeException("No handler registered for key: " + key);
-        return handler.handle(data, userId, repo, mapper);
+        return handler.handle(data, userId, repo, mapper,def);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -274,15 +274,23 @@ public class NktCoreService {
             throw new RuntimeException("Missing required fields: " + missing);
     }
 
-    private String extractUserId(Map<String, Object> data) {
-        Object tokenObj = data.get("token");
-        if (tokenObj == null || tokenObj.toString().isBlank())
-            throw new RuntimeException("Authentication required: missing token");
-        String token = tokenObj.toString().replaceFirst("(?i)^Bearer\\s+", "");
-        if (!jwtProvider.isTokenValid(token))
-            throw new RuntimeException("Invalid or expired token");
-        return jwtProvider.extractUserId(token);
-    }
+	private String extractUserId(Map<String, Object> data) {
+		
+		Object tokenObj = data.get("token");
+		
+		if (tokenObj == null || tokenObj.toString().isBlank())
+			throw new RuntimeException("Authentication required: missing token");
+
+		String token = tokenObj.toString().replaceFirst("(?i)^Bearer\\s+", "");
+		
+//		if (!jwtProvider.isTokenValid(token))
+//			throw new RuntimeException("Invalid or expired token");
+		
+		if (!jwtProvider.isTokenValid(token))
+			throw new RuntimeException("Invalid or expired token");
+		
+		return jwtProvider.extractUserId(token);
+	}
 
     private String str(Map<String, Object> d, String key) {
         Object v = d.get(key); return v == null ? null : v.toString();

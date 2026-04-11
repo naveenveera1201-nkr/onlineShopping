@@ -32,7 +32,7 @@ public class NktUserHandler {
     /* ── CUSTOMER_ADD_ADDRESS ───────────────────────────────────────────── */
     @SuppressWarnings("unchecked")
     public NktOperationHandler addAddress() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             Map<String, Object> user = repo.findById("users", userId)
                     .orElseThrow(() -> new RuntimeException("Customer not found"));
 
@@ -60,7 +60,7 @@ public class NktUserHandler {
     /* ── CUSTOMER_DELETE_ADDRESS ────────────────────────────────────────── */
     @SuppressWarnings("unchecked")
     public NktOperationHandler deleteAddress() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String addressId = str(data, "addressId");
             Map<String, Object> user = repo.findById("users", userId)
                     .orElseThrow(() -> new RuntimeException("Customer not found"));
@@ -77,7 +77,7 @@ public class NktUserHandler {
     /* ── CUSTOMER_TOGGLE_FAV ────────────────────────────────────────────── */
     @SuppressWarnings("unchecked")
     public NktOperationHandler toggleFavourite() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId = str(data, "storeId");
             repo.findById("stores", storeId)
                     .orElseThrow(() -> new RuntimeException("Store not found"));
@@ -95,7 +95,7 @@ public class NktUserHandler {
 
     /* ── STORE_PROFILE_GET ──────────────────────────────────────────────── */
     public NktOperationHandler storeProfileGet() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             Map<String, Object> store = repo.findOne("stores", "ownerId", userId)
                     .orElseThrow(() -> new RuntimeException("Store not found for owner"));
             return json(mapper, store);
@@ -104,7 +104,7 @@ public class NktUserHandler {
 
     /* ── STORE_PROFILE_UPDATE ───────────────────────────────────────────── */
     public NktOperationHandler storeProfileUpdate() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             Map<String, Object> store = repo.findOne("stores", "ownerId", userId)
                     .orElseThrow(() -> new RuntimeException("Store not found for owner"));
             Map<String, Object> updates = new LinkedHashMap<>();
@@ -119,7 +119,7 @@ public class NktUserHandler {
 
     /* ── STORE_PROFILE_TOGGLE ───────────────────────────────────────────── */
     public NktOperationHandler storeProfileToggle() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             Map<String, Object> store = repo.findOne("stores", "ownerId", userId)
                     .orElseThrow(() -> new RuntimeException("Store not found for owner"));
             boolean isOpen = Boolean.parseBoolean(str(data, "isOpen"));
@@ -134,7 +134,7 @@ public class NktUserHandler {
 
     /* ── STORE_PROFILE_DASHBOARD ────────────────────────────────────────── */
     public NktOperationHandler storeProfileDashboard() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             Map<String, Object> store = repo.findOne("stores", "ownerId", userId)
                     .orElseThrow(() -> new RuntimeException("Store not found for owner"));
             String storeId  = store.get("id").toString();
@@ -162,7 +162,7 @@ public class NktUserHandler {
 
     /* ── NOTIFICATION_REGISTER_DEVICE ──────────────────────────────────── */
     public NktOperationHandler registerDevice() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String deviceToken = str(data, "deviceToken");
             Optional<Map<String, Object>> existing = repo.findOneByCriteria("deviceTokens",
                     Map.of("userId", userId, "deviceToken", deviceToken));

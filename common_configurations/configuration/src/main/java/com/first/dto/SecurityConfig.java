@@ -1,86 +1,151 @@
 package com.first.dto;
 
 public class SecurityConfig {
-    private AuthenticationConfig authentication;
-    private AuthorizationConfig authorization;
-    private RateLimitConfig rateLimit;
-    private EncryptionConfig encryption;
+	private AuthenticationConfig authentication;
+	private AuthorizationConfig authorization;
+	private RateLimitConfig rateLimit;
+	private EncryptionConfig encryption;
 
-    public static class AuthenticationConfig {
-        private boolean enabled;
-        private String type;
-        private String[] roles;
-        private String headerName;
+	public static class AuthenticationConfig {
+		private boolean enabled;
+		private String type;
+		private String[] roles;
+		private String headerName;
 
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+		public boolean isEnabled() {
+			return enabled;
+		}
 
-        public String getType() { return type; }
-        public void setType(String type) { this.type = type; }
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
 
-        public String[] getRoles() { return roles; }
-        public void setRoles(String[] roles) { this.roles = roles; }
+		public String getType() {
+			return type;
+		}
 
-        public String getHeaderName() { return headerName; }
-        public void setHeaderName(String headerName) { this.headerName = headerName; }
-    }
+		public void setType(String type) {
+			this.type = type;
+		}
 
-    public static class AuthorizationConfig {
-        private boolean enabled;
-        private boolean resourceOwnerCheck;
+		public String[] getRoles() {
+			return roles;
+		}
 
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+		public void setRoles(String[] roles) {
+			this.roles = roles;
+		}
 
-        public boolean isResourceOwnerCheck() { return resourceOwnerCheck; }
-        public void setResourceOwnerCheck(boolean resourceOwnerCheck) {
-            this.resourceOwnerCheck = resourceOwnerCheck;
-        }
-    }
+		public String getHeaderName() {
+			return headerName;
+		}
 
-    public static class RateLimitConfig {
-        private boolean enabled;
-        private int requestsPerMinute;
-        private int requestsPerHour;
+		public void setHeaderName(String headerName) {
+			this.headerName = headerName;
+		}
+	}
 
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+	public static class AuthorizationConfig {
+		private boolean enabled;
+		private boolean resourceOwnerCheck;
 
-        public int getRequestsPerMinute() { return requestsPerMinute; }
-        public void setRequestsPerMinute(int requestsPerMinute) {
-            this.requestsPerMinute = requestsPerMinute;
-        }
+		public boolean isEnabled() {
+			return enabled;
+		}
 
-        public int getRequestsPerHour() { return requestsPerHour; }
-        public void setRequestsPerHour(int requestsPerHour) {
-            this.requestsPerHour = requestsPerHour;
-        }
-    }
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
 
-    public static class EncryptionConfig {
-        private boolean enabled;
-        private String algorithm;
+		public boolean isResourceOwnerCheck() {
+			return resourceOwnerCheck;
+		}
 
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+		public void setResourceOwnerCheck(boolean resourceOwnerCheck) {
+			this.resourceOwnerCheck = resourceOwnerCheck;
+		}
+	}
 
-        public String getAlgorithm() { return algorithm; }
-        public void setAlgorithm(String algorithm) { this.algorithm = algorithm; }
-    }
+	public static class RateLimitConfig {
+		private boolean enabled;
+		private int requestsPerMinute;
+		private int requestsPerHour;
 
-    public AuthenticationConfig getAuthentication() { return authentication; }
-    public void setAuthentication(AuthenticationConfig authentication) {
-        this.authentication = authentication;
-    }
+		public boolean isEnabled() {
+			return enabled;
+		}
 
-    public AuthorizationConfig getAuthorization() { return authorization; }
-    public void setAuthorization(AuthorizationConfig authorization) {
-        this.authorization = authorization;
-    }
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
 
-    public RateLimitConfig getRateLimit() { return rateLimit; }
-    public void setRateLimit(RateLimitConfig rateLimit) { this.rateLimit = rateLimit; }
+		public int getRequestsPerMinute() {
+			return requestsPerMinute;
+		}
 
-    public EncryptionConfig getEncryption() { return encryption; }
-    public void setEncryption(EncryptionConfig encryption) { this.encryption = encryption; }
+		public void setRequestsPerMinute(int requestsPerMinute) {
+			this.requestsPerMinute = requestsPerMinute;
+		}
+
+		public int getRequestsPerHour() {
+			return requestsPerHour;
+		}
+
+		public void setRequestsPerHour(int requestsPerHour) {
+			this.requestsPerHour = requestsPerHour;
+		}
+	}
+
+	public static class EncryptionConfig {
+		private boolean enabled;
+		private String algorithm;
+
+		public boolean isEnabled() {
+			return enabled;
+		}
+
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
+
+		public String getAlgorithm() {
+			return algorithm;
+		}
+
+		public void setAlgorithm(String algorithm) {
+			this.algorithm = algorithm;
+		}
+	}
+
+	public AuthenticationConfig getAuthentication() {
+		return authentication;
+	}
+
+	public void setAuthentication(AuthenticationConfig authentication) {
+		this.authentication = authentication;
+	}
+
+	public AuthorizationConfig getAuthorization() {
+		return authorization;
+	}
+
+	public void setAuthorization(AuthorizationConfig authorization) {
+		this.authorization = authorization;
+	}
+
+	public RateLimitConfig getRateLimit() {
+		return rateLimit;
+	}
+
+	public void setRateLimit(RateLimitConfig rateLimit) {
+		this.rateLimit = rateLimit;
+	}
+
+	public EncryptionConfig getEncryption() {
+		return encryption;
+	}
+
+	public void setEncryption(EncryptionConfig encryption) {
+		this.encryption = encryption;
+	}
 }

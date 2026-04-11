@@ -1,71 +1,89 @@
 package com.first.services;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import org.springframework.stereotype.Service;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.first.dto.ApiDefinition;
 import com.first.dto.ResponseConfig;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Shapes the raw service result into the response structure declared in the
+ * API YAML config. Adds standard envelope fields (timestamp, apiVersion, statusCode).
+ */
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class ResponseBuilders {
+
+    private final ObjectMapper mapper;   // injected shared bean — never use new ObjectMapper()
 
     public Map<String, Object> build(ApiDefinition apiDef,
                                      Map<String, Object> result,
                                      Map<String, Object> request) {
-        Map<String, Object> response = new HashMap<>();
 
-        if (apiDef.getResponse() == null ||
-                apiDef.getResponse().getFields() == null) {
+        if (apiDef.getResponse() == null || apiDef.getResponse().getFields() == null) {
             return result;
         }
 
+        // Safe conversion — fixes the previous (LinkedHashMap) unchecked cast
+        Map<String, Object> resultMap = toMap(result);
+        Map<String, Object> response  = new HashMap<>();
+
         for (ResponseConfig.ResponseField field : apiDef.getResponse().getFields()) {
-            // Check conditional
-            if (field.getConditional() != null) {
-                if (!evaluateCondition(field.getConditional(), request)) {
-                    continue;
-                }
+            if (field.getConditional() != null
+                    && !evaluateCondition(field.getConditional(), request)) {
+                continue;
             }
-            
-            LinkedHashMap<String,Object> actualResult =  (LinkedHashMap<String, Object>) result;
-           
-            Object value = actualResult.get(field.getName());
-            
-//            Object value = result.get(field.getName());
+            Object value = resultMap.get(field.getName());
             if (value == null && field.getDefaultValue() != null) {
                 value = field.getDefaultValue();
             }
-
             response.put(field.getName(), value);
         }
 
-        // Add standard fields
-		response.put("timestamp", LocalDateTime.now().toString());
-		response.put("apiVersion", apiDef.getVersion());
-		response.put("statusDescription",
-				result.get("statusDesc") != null ? result.get("statusDesc") : apiDef.getDescription());
-		response.put("statusCode", result.get("statusCode") != null ? result.get("statusCode") : "200");
+        // Standard envelope
+        response.put("timestamp",         LocalDateTime.now().toString());
+        response.put("apiVersion",        apiDef.getVersion());
+        response.put("statusDescription", resultMap.getOrDefault("statusDesc", apiDef.getDescription()));
+        response.put("statusCode",        resultMap.getOrDefault("statusCode", "200").toString());
 
         return response;
     }
 
-    private boolean evaluateCondition(String condition, Map<String, Object> request) {
-        // Simple condition evaluation
-        // Format: #{request.field == value}
-        if (condition.contains("==")) {
-            String[] parts = condition.replace("#{", "").replace("}", "")
-                    .split("==");
-            if (parts.length == 2) {
-                String fieldPath = parts[0].trim().replace("request.", "");
-                String expectedValue = parts[1].trim();
-                Object actualValue = request.get(fieldPath);
-                return String.valueOf(actualValue).equals(expectedValue);
-            }
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** Thread-safe, type-safe conversion via ObjectMapper — no unchecked casts. */
+    private Map<String, Object> toMap(Object obj) {
+        try {
+            return mapper.convertValue(obj, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("Could not convert result to Map, returning as-is: {}", e.getMessage());
+            return new HashMap<>();
         }
-        return true;
+    }
+
+    /**
+     * Evaluates a simple condition string of the form {@code #{request.field == value}}.
+     */
+    private boolean evaluateCondition(String condition, Map<String, Object> request) {
+        if (condition == null || !condition.contains("==")) return true;
+        try {
+            String expr  = condition.replace("#{", "").replace("}", "").trim();
+            String[] parts = expr.split("==");
+            if (parts.length != 2) return true;
+            String field    = parts[0].trim().replace("request.", "");
+            String expected = parts[1].trim().replace("'", "").replace("\"", "");
+            Object actual   = request.get(field);
+            return String.valueOf(actual).equals(expected);
+        } catch (Exception e) {
+            log.warn("Condition evaluation failed: {}", e.getMessage());
+            return true;
+        }
     }
 }

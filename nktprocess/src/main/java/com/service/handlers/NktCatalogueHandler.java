@@ -39,7 +39,7 @@ public class NktCatalogueHandler {
 
     /* ── DISCOVER_NEARBY_STORES ─────────────────────────────────────────── */
     public NktOperationHandler nearbyStores() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             double lat    = Double.parseDouble(str(data, "latitude"));
             double lon    = Double.parseDouble(str(data, "longitude"));
             double radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
@@ -71,7 +71,7 @@ public class NktCatalogueHandler {
 
     /* ── STORES_GET_PRODUCTS ────────────────────────────────────────────── */
     public NktOperationHandler storeProducts() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId  = str(data, "storeId");
             String category = str(data, "category");
             String availStr = str(data, "available");
@@ -86,7 +86,7 @@ public class NktCatalogueHandler {
 
     /* ── STORES_GET_AVAILABILITY (stub) ─────────────────────────────────── */
     public NktOperationHandler storeAvailability() {
-        return (data, userId, repo, mapper) ->
+        return (data, userId, repo, mapper, def) ->
                 json(mapper, Map.of("storeId", str(data, "storeId"),
                         "serviceId", str(data, "serviceId"),
                         "fromDate",  str(data, "fromDate"),
@@ -95,7 +95,7 @@ public class NktCatalogueHandler {
 
     /* ── STOCK_LIST ─────────────────────────────────────────────────────── */
     public NktOperationHandler stockList() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId  = resolveStoreId(userId, repo);
             String category = str(data, "category");
             String availStr = str(data, "available");
@@ -110,7 +110,7 @@ public class NktCatalogueHandler {
 
     /* ── STOCK_ADD ──────────────────────────────────────────────────────── */
     public NktOperationHandler stockAdd() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId = resolveStoreId(userId, repo);
             int    qty     = data.get("qty")   != null ? Integer.parseInt(str(data, "qty"))   : 0;
             double price   = data.get("price") != null ? Double.parseDouble(str(data, "price")) : 0.0;
@@ -134,7 +134,7 @@ public class NktCatalogueHandler {
 
     /* ── STOCK_CATEGORIES ───────────────────────────────────────────────── */
     public NktOperationHandler stockCategories() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String storeId = resolveStoreId(userId, repo);
             List<String> cats = repo.findAll("stockItems", Map.of("storeId", storeId, "status", "ACTIVE"))
                     .stream()
@@ -146,7 +146,7 @@ public class NktCatalogueHandler {
 
     /* ── STOCK_UPDATE ───────────────────────────────────────────────────── */
     public NktOperationHandler stockUpdate() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String itemId = str(data, "itemId");
             repo.findById("stockItems", itemId)
                     .orElseThrow(() -> new RuntimeException("Item not found: " + itemId));
@@ -165,7 +165,7 @@ public class NktCatalogueHandler {
 
     /* ── STOCK_ADJUST_QTY ───────────────────────────────────────────────── */
     public NktOperationHandler stockAdjustQty() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String itemId = str(data, "itemId");
             int    delta  = Integer.parseInt(str(data, "delta"));
             Map<String, Object> item = repo.findById("stockItems", itemId)
@@ -181,7 +181,7 @@ public class NktCatalogueHandler {
 
     /* ── STOCK_TOGGLE_AVAILABILITY ──────────────────────────────────────── */
     public NktOperationHandler stockToggleAvailability() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String  itemId = str(data, "itemId");
             boolean avail  = Boolean.parseBoolean(str(data, "available"));
             repo.findById("stockItems", itemId)
@@ -194,7 +194,7 @@ public class NktCatalogueHandler {
 
     /* ── STOCK_DELETE ───────────────────────────────────────────────────── */
     public NktOperationHandler stockDelete() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String itemId = str(data, "itemId");
             Map<String, Object> item = repo.findById("stockItems", itemId)
                     .orElseThrow(() -> new RuntimeException("Item not found: " + itemId));
@@ -208,7 +208,7 @@ public class NktCatalogueHandler {
 
     /* ── LOCATION_REVERSE_GEOCODE ───────────────────────────────────────── */
     public NktOperationHandler reverseGeocode() {
-        return (data, userId, repo, mapper) ->
+        return (data, userId, repo, mapper, def) ->
                 json(mapper, Map.of(
                         "latitude",  str(data, "latitude"),
                         "longitude", str(data, "longitude"),
@@ -218,7 +218,7 @@ public class NktCatalogueHandler {
 
     /* ── LOCATION_GLOBAL_SEARCH ─────────────────────────────────────────── */
     public NktOperationHandler globalSearch() {
-        return (data, userId, repo, mapper) -> {
+        return (data, userId, repo, mapper, def) -> {
             String q = str(data, "q");
             String cat = str(data, "categoryId");
             String lc  = q != null ? q.toLowerCase() : "";
