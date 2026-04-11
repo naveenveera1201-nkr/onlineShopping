@@ -5,6 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.bson.types.ObjectId;
+import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
@@ -151,25 +153,28 @@ public class NktCoreService {
 
         // 3 ── Identity: extract userId from JWT (protected endpoints) ────────
         String userId = null;
+        String userType = null;
         if (def.isProtectedEndpoint()) {
-            userId = extractUserId(data);
+            userId = extractUserId(data).split(",")[0];
+            userType = extractUserId(data).split(",")[1];
         }
         // Strip the token from data so it never reaches handlers / DB
         data.remove("token");
 
         // 4 ── Inject userId into data under the configured field name ─────────
         if (userId != null && def.getUserIdField() != null) {
-            data.put(def.getUserIdField(), userId);
+            data.put("userId", userId);
+            data.put("userType", userType);
         }
 
         // 5 ── Dispatch to operation ───────────────────────────────────────────
         return switch (def.getOperation()) {
             case "FIND_ALL"          -> execFindAll(def, data);
             case "FIND_BY_ID"        -> execFindById(def, data);
-            case "FIND_BY_USER_ID"   -> execFindByUserId(def, userId);
+            case "FIND_BY_USER_ID"   -> execFindByUserId(def, userId,userType);
             case "INSERT"            -> execInsert(def, data);
             case "UPDATE_BY_ID"      -> execUpdateById(def, data);
-            case "UPDATE_BY_USER_ID" -> execUpdateByUserId(def, data, userId);
+            case "UPDATE_BY_USER_ID" -> execUpdateByUserId(def, data, userId,userType);
             case "SOFT_DELETE"       -> execSoftDelete(def, data);
             case "CUSTOM"            -> execCustom(def, data, userId);
             default -> throw new RuntimeException("Unknown operation: " + def.getOperation());
@@ -207,10 +212,33 @@ public class NktCoreService {
                 .orElseThrow(() -> new RuntimeException("Document not found: " + id)));
     }
 
-    private String execFindByUserId(NktProcessDefinition def, String userId) {
-        return toJson(repo.findOne(def.getCollection(), "userId", userId)
-                .orElseThrow(() -> new RuntimeException("Document not found for user: " + userId)));
-    }
+	private String execFindByUserId(NktProcessDefinition def, String userId, String userType) {
+		
+		String tableName = userType + def.getCollection();
+		
+		if (!ObjectId.isValid(userId)) {
+		    return toJson(Map.of(
+		            "statusCode", "N400",
+		            "statusDesc", "Invalid userId format"
+		    ));
+		}
+
+		Map<String, Object> user = repo
+		        .findOne(tableName, "_id", new ObjectId(userId))
+		        .orElse(null);
+
+		if (user == null) {
+		    return toJson( Map.of(
+		            "statusCode", "N404",
+		            "statusDesc", "User not found"
+		    ));
+		}
+
+		return toJson(Map.of("data", user));
+		
+//		return toJson(repo.findOne(tableName, "_id", new ObjectId(userId))
+//				.orElseThrow(() -> new RuntimeException("Document not found for user: " + userId)));
+	}
 
     private String execInsert(NktProcessDefinition def, Map<String, Object> data) {
         return toJson(repo.insert(def.getCollection(), data));
@@ -228,8 +256,18 @@ public class NktCoreService {
 
     /**added on 30-Mar-2026**/
     private String execUpdateByUserId(NktProcessDefinition def,
-			Map<String, Object> data, String userId) {
-		Map<String, Object> updates = new LinkedHashMap<>();
+			Map<String, Object> data, String userId, String userType) {
+
+    	String tableName = userType + def.getCollection();
+    	
+    	if (!ObjectId.isValid(userId)) {
+		    return toJson(Map.of(
+		            "statusCode", "N400",
+		            "statusDesc", "Invalid userId format"
+		    ));
+		}
+    	
+    	Map<String, Object> updates = new LinkedHashMap<>();
 		// Only update fields explicitly allowed in config
 		
 		if (def.getRequiredFields() != null) {
@@ -241,8 +279,8 @@ public class NktCoreService {
 			updates.putAll(data);
 		}
 		updates.put("updatedAt", java.time.LocalDateTime.now().toString());
-		repo.updateFirst(def.getCollection(), Map.of("userId", userId), updates);
-		return toJson(repo.findOne(def.getCollection(), "userId", userId).orElseThrow());
+		repo.updateFirst(tableName, Map.of("_id", new ObjectId(userId)), updates);
+		return toJson(repo.findOne(tableName, "_id", new ObjectId(userId)).orElseThrow());
 	}
 
     private String execSoftDelete(NktProcessDefinition def, Map<String, Object> data) {
@@ -289,7 +327,7 @@ public class NktCoreService {
 		if (!jwtProvider.isTokenValid(token))
 			throw new RuntimeException("Invalid or expired token");
 		
-		return jwtProvider.extractUserId(token);
+		return jwtProvider.extractUserId(token) + "," +jwtProvider.extractUserType(token);
 	}
 
     private String str(Map<String, Object> d, String key) {

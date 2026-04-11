@@ -8,11 +8,11 @@ apis:
     enabled: true
     security:
       authentication:
-        enabled: true
+        enabled: false
         type: JWT
         roles:
         - CUSTOMER
-        - STORE
+        - BUSINESS
       authorization:
         enabled: true
       rateLimit:
@@ -22,17 +22,17 @@ apis:
       encryption:
         enabled: true
         algorithm: AES256
-    request:
-      contentType: application/json
-      parameters:
-      - name: refreshToken
-        type: String
-        location: BODY
-        required: true
-        sensitive: true
-        validation:
-          minLength: 1
-          errorMessage: Refresh token is required
+#    request:
+#      contentType: application/json
+#      parameters:
+#      - name: token
+#        type: String
+#        location: BODY
+#        required: true
+#        sensitive: true
+#        validation:
+#          minLength: 1
+#          errorMessage: accessToken token is required
     response:
       successCode: 200
       contentType: application/json
@@ -58,7 +58,7 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p106
+      processCode: nkt.auth.logout
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

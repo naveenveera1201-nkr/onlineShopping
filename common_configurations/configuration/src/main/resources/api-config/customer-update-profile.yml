@@ -3,7 +3,7 @@ apis:
     name: Update Customer Profile
     version: v1
     method: PUT
-    path: /api/v1/customer/profile
+    path: /api/v1/customer/update
     description: Updates the customer's display name or email address.
     enabled: true
     security:
@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - CUSTOMER
+        - customer
       authorization:
         enabled: true
       rateLimit:
@@ -65,7 +65,7 @@ apis:
         description: Actor who performed the update
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p108
+      processCode: nkt.customer.update_profile
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

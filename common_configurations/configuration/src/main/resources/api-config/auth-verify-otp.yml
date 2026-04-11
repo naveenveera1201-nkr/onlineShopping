@@ -9,7 +9,7 @@ apis:
     enabled: true
     security:
       authentication:
-        enabled: true
+        enabled: false
         type: JWT
         roles:
         - PUBLIC

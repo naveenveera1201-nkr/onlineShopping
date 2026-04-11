@@ -37,6 +37,8 @@ public class ValidationService {
                                         HttpServletRequest request,
                                         Map<String, String> headers) {
         Map<String, Object> validated = new HashMap<>();
+        
+		validated.put("token", headers.get("Authorization"));
 
         if (apiDef.getRequest() == null || apiDef.getRequest().getParameters() == null) {
             return validated;
@@ -62,7 +64,7 @@ public class ValidationService {
                 validated.put(param.getName(), value);
             }
         }
-
+        
         log.debug("Validation passed for api={}, params={}", apiDef.getId(), validated.keySet());
         return validated;
     }

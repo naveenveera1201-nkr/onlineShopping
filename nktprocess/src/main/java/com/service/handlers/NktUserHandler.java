@@ -1,12 +1,20 @@
 package com.service.handlers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.repository.NktDynamicRepository;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.util.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.models.nkt.NktProcessDefinition;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Handles user/customer profile, store-profile, and notification operations
@@ -32,45 +40,161 @@ public class NktUserHandler {
     /* ── CUSTOMER_ADD_ADDRESS ───────────────────────────────────────────── */
     @SuppressWarnings("unchecked")
     public NktOperationHandler addAddress() {
-        return (data, userId, repo, mapper, def) -> {
-            Map<String, Object> user = repo.findById("users", userId)
-                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+    	return (data, userId, repo, mapper, def) -> {
 
-            Map<String, Object> addr = new LinkedHashMap<>();
-            addr.put("id",        UUID.randomUUID().toString());
-            addr.put("label",     str(data, "label"));
-            addr.put("line1",     str(data, "line1"));
-            addr.put("line2",     str(data, "line2"));
-            addr.put("city",      str(data, "city"));
-            addr.put("state",     str(data, "state"));
-            addr.put("pincode",   str(data, "pincode"));
-            addr.put("latitude",  data.get("latitude"));
-            addr.put("longitude", data.get("longitude"));
-            addr.put("status",    "ACTIVE");
+    	    String tableName = data.get("userType") + def.getCollection();
 
-            List<Map<String, Object>> addresses =
-                    (List<Map<String, Object>>) user.getOrDefault("addresses", new ArrayList<>());
-            addresses.add(addr);
-            repo.updateById("users", userId,
-                    Map.of("addresses", addresses, "updatedAt", LocalDateTime.now().toString()));
-            return json(mapper, addr);
-        };
+    	    if (!ObjectId.isValid(userId)) {
+    	        return json(mapper, Map.of(
+    	                "statusCode", "N400",
+    	                "statusDesc", "Invalid userId format"
+    	        ));
+    	    }
+
+    	    String id = userId;
+
+    	    Map<String, Object> user = repo.findById(tableName, id).orElse(null);
+
+    	    if (user == null) {
+    	        return json(mapper, Map.of(
+    	                "statusCode", "N404",
+    	                "statusDesc", "User not found"
+    	        ));
+    	    }
+
+    	    List<Map<String, Object>> addresses =
+    	            (List<Map<String, Object>>) user.getOrDefault("addresses", new ArrayList<>());
+
+    	    String addressId = str(data, "id"); // incoming address id (optional)
+    	    String newLabel = str(data, "label").trim();
+
+    	    Map<String, Object> existingAddress = null;
+
+    	    // ✅ Find existing address by ID
+    	    if (addressId != null) {
+    	        for (Map<String, Object> a : addresses) {
+    	            if (addressId.equals(a.get("id"))) {
+    	                existingAddress = a;
+    	                break;
+    	            }
+    	        }
+    	    }
+    	    
+    	    String existingAddressId = existingAddress != null 
+    	            ? existingAddress.get("id").toString() 
+    	            : null;
+
+    	    if (existingAddress != null) {
+    	        // 🔄 UPDATE FLOW
+
+    	        existingAddress.put("label", newLabel);
+    	        existingAddress.put("line1", str(data, "line1"));
+    	        existingAddress.put("line2", str(data, "line2"));
+    	        existingAddress.put("city", str(data, "city"));
+    	        existingAddress.put("state", str(data, "state"));
+    	        existingAddress.put("pincode", str(data, "pincode"));
+    	        existingAddress.put("latitude", data.get("latitude"));
+    	        existingAddress.put("longitude", data.get("longitude"));
+    	        existingAddress.put("updatedAt", LocalDateTime.now().toString());
+
+    	    } else {
+
+				boolean labelExists = addresses.stream()
+						.anyMatch(a -> newLabel.equalsIgnoreCase(String.valueOf(a.get("label")))
+								&& (existingAddressId == null || !a.get("id").equals(existingAddressId)));
+
+				if (labelExists) {
+					return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Address label already exists"));
+				}
+
+
+    	        Map<String, Object> addr = new LinkedHashMap<>();
+    	        addr.put("id", UUID.randomUUID().toString());
+    	        addr.put("label", newLabel);
+    	        addr.put("line1", str(data, "line1"));
+    	        addr.put("line2", str(data, "line2"));
+    	        addr.put("city", str(data, "city"));
+    	        addr.put("state", str(data, "state"));
+    	        addr.put("pincode", str(data, "pincode"));
+    	        addr.put("latitude", data.get("latitude"));
+    	        addr.put("longitude", data.get("longitude"));
+    	        addr.put("status", "ACTIVE");
+    	        addr.put("createdAt", LocalDateTime.now().toString());
+
+    	        addresses.add(addr);
+    	    }
+
+    	    // ✅ Save back
+    	    repo.updateById(tableName, id,
+    	            Map.of("addresses", addresses, "updatedAt", LocalDateTime.now().toString()));
+
+    	    return json(mapper, Map.of(
+    	            "data", Map.of(
+    	                    "message", existingAddress != null ? "Address updated successfully" : "Address added successfully",
+    	                    "statusCode", "N200",
+    	                    "statusDesc", "Success"
+    	            )
+    	    ));
+    	};
     }
 
     /* ── CUSTOMER_DELETE_ADDRESS ────────────────────────────────────────── */
     @SuppressWarnings("unchecked")
     public NktOperationHandler deleteAddress() {
         return (data, userId, repo, mapper, def) -> {
+
+            String tableName = data.get("userType") + def.getCollection();
             String addressId = str(data, "addressId");
-            Map<String, Object> user = repo.findById("users", userId)
-                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+            // ✅ Validate userId
+            if (!ObjectId.isValid(userId)) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "Invalid userId format"
+                ));
+            }
+
+            // ✅ Validate addressId
+            if (addressId == null || addressId.isBlank()) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "addressId is required"
+                ));
+            }
+
+            Map<String, Object> user = repo.findById(tableName, userId).orElse(null);
+
+            if (user == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N404",
+                        "statusDesc", "User not found"
+                ));
+            }
+
             List<Map<String, Object>> addresses =
                     (List<Map<String, Object>>) user.getOrDefault("addresses", new ArrayList<>());
+
+            // ✅ REMOVE ADDRESS
             boolean removed = addresses.removeIf(a -> addressId.equals(a.get("id")));
-            if (!removed) throw new RuntimeException("Address not found");
-            repo.updateById("users", userId,
+
+            if (!removed) {
+                return json(mapper, Map.of(
+                        "statusCode", "N404",
+                        "statusDesc", "Address not found"
+                ));
+            }
+
+            // ✅ Update DB
+            repo.updateById(tableName, userId,
                     Map.of("addresses", addresses, "updatedAt", LocalDateTime.now().toString()));
-            return json(mapper, Map.of("message", "Address deleted"));
+
+            return json(mapper, Map.of(
+                    "data", Map.of(
+                            "message", "Address deleted successfully",
+                            "statusCode", "N200",
+                            "statusDesc", "Success"
+                    )
+            ));
         };
     }
 
@@ -185,4 +309,5 @@ public class NktUserHandler {
             return json(mapper, Map.of("message", "Device registered successfully"));
         };
     }
+    
 }

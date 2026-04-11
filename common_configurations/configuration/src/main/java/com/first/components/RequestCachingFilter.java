@@ -111,9 +111,9 @@ public class RequestCachingFilter extends OncePerRequestFilter {
 
     /** Values of these keys are replaced with *** in audit logs */
     private static final Set<String> SENSITIVE_KEYS = Set.of(
-            "password", "token", "secret", "authorization", "pin", "cvv",
+            "password", "token", "secret", "pin", "cvv",
             "otp", "ssn", "cardnumber", "accesstoken", "refreshtoken",
-            "apikey", "privatekey");
+            "apikey", "privatekey"); //, "authorization"
 
     // ═════════════════════════════════════════════════════════════════════════
     //  OncePerRequestFilter contract — ONE override, correct signature
@@ -215,7 +215,7 @@ public class RequestCachingFilter extends OncePerRequestFilter {
             securityService.validateSecurity(apiDef, request, headers);
 
             // 2 — Rate limiting
-//            securityService.enforceRateLimit(apiDef, request);
+            securityService.enforceRateLimit(apiDef, request);
 
             // 3 — Request body / param validation
             Map<String, Object> validatedParams =

@@ -9,7 +9,7 @@ apis:
     enabled: true
     security:
       authentication:
-        enabled: true
+        enabled: false
         type: JWT
         roles:
         - PUBLIC
@@ -58,7 +58,7 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p103
+      processCode: nkt.auth.refresh_token
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

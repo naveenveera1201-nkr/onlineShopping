@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -25,6 +26,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class NktAuthHandler {
+	
+    @Value("${otp.expiration}")
+    private String otpExpiration;
 
     private final JwtTokenProvider jwt;
 
@@ -50,12 +54,34 @@ public class NktAuthHandler {
 			String purpose = str(data, "purpose");
 			String userType = str(data, "userType");
 
-			if ("register".equals(purpose)
-					&& (userType.equalsIgnoreCase("store")
-							&& repo.exists("business_users", Map.of("identifier", identifier)))
-					&& (userType.equalsIgnoreCase("customer_users")
-							&& repo.exists("customer_users", Map.of("identifier", identifier)))) {
-				throw new RuntimeException("User already exists");
+			if ("register".equals(purpose)) {
+				if (userType.equalsIgnoreCase("business")
+						&& repo.exists("businessusers", Map.of("identifier", identifier))) {
+//					throw new RuntimeException("Business user already exists");
+					return json(mapper, Map.of(
+	                        "statusCode", "N400",
+	                        "statusDesc", "Business user already exists"
+	                ));
+				}
+
+				if (userType.equalsIgnoreCase("customer")
+						&& repo.exists("customerusers", Map.of("identifier", identifier))) {
+//					throw new RuntimeException("Customer user already exists");
+					return json(mapper, Map.of(
+	                        "statusCode", "N400",
+	                        "statusDesc", "customer user already exists"
+	                ));
+					
+				}
+
+				if (userType.equalsIgnoreCase("admin")
+						&& repo.exists("adminusers", Map.of("identifier", identifier))) {
+//					throw new RuntimeException("Admin user already exists");
+					return json(mapper, Map.of(
+	                        "statusCode", "N400",
+	                        "statusDesc", "Admin user already exists"
+	                ));
+				}
 			}
 			String otp = String.format("%04d", new Random().nextInt(10000));
 			repo.deleteAll("otp_records", Map.of("identifier", identifier));
@@ -68,6 +94,7 @@ public class NktAuthHandler {
 			rec.put("purpose", purpose);
 			rec.put("used", false);
 			rec.put("attempts", 0);
+			rec.put("expiryTime", LocalDateTime.now().plusMinutes(otpExpiration != null ? Long.parseLong(otpExpiration) : 3).toString());
 			rec.put("createdAt", LocalDateTime.now().toString());
 			repo.insert("otp_records", rec);
 
@@ -82,19 +109,30 @@ public class NktAuthHandler {
             String identifier = str(data, "identifier");
             String otp        = str(data, "otp");
             String purpose    = str(data, "purpose");
+            String userType   =  str(data, "userType");
 
-			Map<String, Object> rec = repo
-					.findOneByCriteria("otp_records", Map.of("identifier", identifier, "used", false)).get();
-//                    .orElseThrow(() ->
-                    if(CollectionUtils.isEmpty(rec)) {
-                    	return json(mapper,Map.of(
-                    			"statusCode",  "N400",
-                    			"statusDesc", "OTP not found or expired"));
-                    	
-                    }
-//                    new RuntimeException("OTP not found or expired")
-//                    );
+			Map<String, Object> rec = repo.findOneByCriteria("otp_records",
+					Map.of("identifier", identifier, "used", false, "userType", userType)).orElse(null);
 
+            if (rec == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "OTP not found or expired"
+                ));
+            }
+
+			LocalDateTime createdAt = LocalDateTime.parse(rec.get("createdAt").toString());
+
+			LocalDateTime expiryTime = createdAt.plusMinutes(otpExpiration != null ? Long.parseLong(otpExpiration) : 3);
+
+			if (LocalDateTime.now().isAfter(expiryTime)) {
+
+				// mark as used/expired (optional but recommended)
+				repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false), Map.of("used", true));
+
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "OTP expired"));
+			}
+            
 			if (!otp.equals(rec.get("otp"))) {
 				
 				int attempts = (int) rec.get("attempts") + 1;
@@ -185,8 +223,14 @@ public class NktAuthHandler {
 			String jti = jwt.extractAllClaims(rt).getId();
 			
 			Map<String, Object> tokenDoc = repo
-					.findOneByCriteria("auth_tokens", Map.of("jti", jti, "isValid", true, "isLoggedOut", false))
-					.orElseThrow(() -> new RuntimeException("Invalid session"));
+					.findOneByCriteria("auth_tokens", Map.of("jti", jti, "isValid", true, "isLoggedOut", false)).orElse(null);
+
+		            if (tokenDoc == null) {
+		                return json(mapper, Map.of(
+		                        "statusCode", "N400",
+		                        "statusDesc", "Invalid session"
+		                ));
+		            }
 			
 			if (!jwt.isTokenValid(rt))
 				throw new RuntimeException("Invalid refresh token");
@@ -196,7 +240,7 @@ public class NktAuthHandler {
 			
 			String uid = jwt.extractUserId(rt);
 
-			String tableName = str(data, "userType") + def.getCollection();
+			String tableName = tokenDoc.get("userType") + def.getCollection();
 
 			Map<String, Object> user = repo.findById(tableName, uid).get();
 //							.orElseThrow(() -> new RuntimeException("User not found"));
@@ -205,7 +249,7 @@ public class NktAuthHandler {
 				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "User not found"));
 			}
 
-			String utyp = jwt.extractUserId(rt);
+			String utyp = jwt.extractUserType(rt);
 			String jti_new = java.util.UUID.randomUUID().toString();
 			String accessToken = jwt.generateAccessToken(uid, utyp, jti_new);
 			String refreshToken = jwt.generateRefreshToken(uid, jti);
@@ -275,7 +319,7 @@ public class NktAuthHandler {
 //                json(mapper, Map.of("message", "Logged out successfully"));
     	 return (data, userId, repo, mapper, def) -> {
 
-    	        String token = str(data, "accessToken");
+    	        String token = str(data, "token");
     	        String jti  = jwt.extractUId(token);
 
     	        repo.updateFirst("auth_tokens",

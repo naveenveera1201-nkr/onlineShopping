@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - CUSTOMER
+        - customer
       authorization:
         enabled: true
       rateLimit:
@@ -47,7 +47,7 @@ apis:
         description: Deletion confirmation message
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p110
+      processCode: nkt.customer.delete_address
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

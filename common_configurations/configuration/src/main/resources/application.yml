@@ -12,6 +12,8 @@ jwt:
   secret: bm10LXNlY3JldC1rZXktZm9yLW5hbW1ha2FkYWl0aGVydS1hcGktMjAyNA==
   expiration: 900000          # 15 min in ms
   refresh-expiration: 2592000000  # 30 days in ms
+otp:
+  expiration: 3     # 3 mins
 
 # ── Downstream services ───────────────────────────────────────────────────────
 services:

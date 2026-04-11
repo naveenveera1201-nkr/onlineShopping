@@ -38,37 +38,108 @@ public class NktCatalogueHandler {
     }
 
     /* ── DISCOVER_NEARBY_STORES ─────────────────────────────────────────── */
+//    public NktOperationHandler nearbyStores() {
+//        return (data, userId, repo, mapper, def) -> {
+//            double lat    = Double.parseDouble(str(data, "latitude"));
+//            double lon    = Double.parseDouble(str(data, "longitude"));
+//            double radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
+//
+//            List<Map<String, Object>> nearby = repo.findAll("stores", Map.of("status", "ACTIVE"))
+//                    .stream()
+//                    .filter(s -> {
+//                        Object addrObj = s.get("address");
+//                        if (!(addrObj instanceof Map)) return false;
+//                        @SuppressWarnings("unchecked")
+//                        Map<String, Object> addr = (Map<String, Object>) addrObj;
+//                        Object sLat = addr.get("latitude"), sLon = addr.get("longitude");
+//                        if (sLat == null || sLon == null) return false;
+//                        return haversine(lat, lon,
+//                                Double.parseDouble(sLat.toString()),
+//                                Double.parseDouble(sLon.toString())) <= radius;
+//                    })
+//                    .sorted(Comparator.comparingDouble(s -> {
+//                        @SuppressWarnings("unchecked")
+//                        Map<String, Object> addr = (Map<String, Object>) s.get("address");
+//                        return haversine(lat, lon,
+//                                Double.parseDouble(addr.get("latitude").toString()),
+//                                Double.parseDouble(addr.get("longitude").toString()));
+//                    }))
+//                    .collect(Collectors.toList());
+//            return json(mapper, nearby);
+//        };
+//    }
+
+    
     public NktOperationHandler nearbyStores() {
         return (data, userId, repo, mapper, def) -> {
-            double lat    = Double.parseDouble(str(data, "latitude"));
-            double lon    = Double.parseDouble(str(data, "longitude"));
-            double radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
+
+            // ✅ Validate input
+            if (str(data, "latitude") == null || str(data, "longitude") == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "Latitude and Longitude are required"
+                ));
+            }
+
+            double lat;
+            double lon;
+
+            try {
+                lat = Double.parseDouble(str(data, "latitude"));
+                lon = Double.parseDouble(str(data, "longitude"));
+            } catch (Exception e) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "Invalid latitude/longitude format"
+                ));
+            }
+
+            double radius = data.get("radiusKm") != null
+                    ? Double.parseDouble(str(data, "radiusKm"))
+                    : 5.0;
 
             List<Map<String, Object>> nearby = repo.findAll("stores", Map.of("status", "ACTIVE"))
                     .stream()
-                    .filter(s -> {
-                        Object addrObj = s.get("address");
-                        if (!(addrObj instanceof Map)) return false;
+                    .map(store -> {
+                        Object addrObj = store.get("address");
+                        if (!(addrObj instanceof Map)) return null;
+
                         @SuppressWarnings("unchecked")
                         Map<String, Object> addr = (Map<String, Object>) addrObj;
-                        Object sLat = addr.get("latitude"), sLon = addr.get("longitude");
-                        if (sLat == null || sLon == null) return false;
-                        return haversine(lat, lon,
+
+                        Object sLat = addr.get("latitude");
+                        Object sLon = addr.get("longitude");
+
+                        if (sLat == null || sLon == null) return null;
+
+                        double distance = haversine(
+                                lat, lon,
                                 Double.parseDouble(sLat.toString()),
-                                Double.parseDouble(sLon.toString())) <= radius;
+                                Double.parseDouble(sLon.toString())
+                        );
+
+                        // ✅ filter by radius
+                        if (distance > radius) return null;
+
+                        // ✅ attach distance
+                        store.put("distanceKm", distance);
+
+                        return store;
                     })
-                    .sorted(Comparator.comparingDouble(s -> {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> addr = (Map<String, Object>) s.get("address");
-                        return haversine(lat, lon,
-                                Double.parseDouble(addr.get("latitude").toString()),
-                                Double.parseDouble(addr.get("longitude").toString()));
-                    }))
+                    .filter(Objects::nonNull)
+                    .sorted(Comparator.comparingDouble(s -> (double) s.get("distanceKm")))
+                    .limit(50) // ✅ avoid huge response
                     .collect(Collectors.toList());
-            return json(mapper, nearby);
+
+            return json(mapper, Map.of(
+                    "data", nearby,
+                    "count", nearby.size(),
+                    "statusCode", "N200",
+                    "statusDesc", "Success"
+            ));
         };
     }
-
+    
     /* ── STORES_GET_PRODUCTS ────────────────────────────────────────────── */
     public NktOperationHandler storeProducts() {
         return (data, userId, repo, mapper, def) -> {

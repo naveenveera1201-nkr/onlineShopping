@@ -65,7 +65,7 @@ public class SecurityService {
         String headerName = auth.getHeaderName() != null ?
                 auth.getHeaderName() : "Authorization";
 
-        String token = headers.get(headerName.toLowerCase());
+        String token = headers.get(headerName);
         if (token == null || token.isEmpty()) {
             throw new SecurityException("Authentication token required");
         }
@@ -186,10 +186,14 @@ public class SecurityService {
 
     public void enforceRateLimit(ApiDefinition apiDef, HttpServletRequest request) {
         ApiSecurityConfig security = apiDef.getSecurity();
-        if (security == null || security.getRateLimit() == null) return;
+       
+		if (security == null || security.getRateLimit() == null)
+			return;
 
-        ApiSecurityConfig.RateLimitConfig rl = security.getRateLimit();
-        if (!rl.isEnabled()) return;
+		ApiSecurityConfig.RateLimitConfig rl = security.getRateLimit();
+       
+		if (!rl.isEnabled())
+			return;
 
         String clientId = resolveClientId(request);
         String key      = apiDef.getId() + ":" + clientId;
@@ -205,11 +209,14 @@ public class SecurityService {
 
     /** Prefers authenticated userId over IP address as the rate-limit key. */
     private String resolveClientId(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+       
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+       
         if (auth != null && auth.isAuthenticated()
                 && !"anonymousUser".equals(auth.getPrincipal())) {
             return auth.getPrincipal().toString();
         }
+        
         return request.getRemoteAddr();
     }
 

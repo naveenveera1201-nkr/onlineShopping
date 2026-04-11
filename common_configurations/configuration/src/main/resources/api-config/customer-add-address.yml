@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - CUSTOMER
+        - customer
       authorization:
         enabled: true
       rateLimit:
@@ -24,6 +24,10 @@ apis:
     request:
       contentType: application/json
       parameters:
+      - name: id
+        type: String
+        location: BODY
+        required: false
       - name: label
         type: String
         location: BODY
@@ -111,7 +115,7 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p109
+      processCode: nkt.customer.add_address
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:
