@@ -3,7 +3,7 @@ apis:
     name: Mark Order as Delivered
     version: v1
     method: POST
-    path: /api/v1/store/orders/{orderId}/deliver
+    path: /api/v1/store/orders/deliver
     description: Marks a dispatched order as delivered. Triggers the customer's order completion screen and rating prompt.
     enabled: true
     security:
@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - STORE
+        - business
       authorization:
         enabled: true
       rateLimit:
@@ -26,7 +26,7 @@ apis:
       parameters:
       - name: orderId
         type: String
-        location: PATH
+        location: BODY
         required: true
         validation:
           minLength: 1
@@ -62,7 +62,7 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p151
+      processCode: nkt.store_order.deliver
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

@@ -1,10 +1,10 @@
 apis:
-  - id: customer-toggle-favourite
-    name: Save / Unsave Favourite Store
+  - id: stores-get-products
+    name: Get Store Product Catalogue
     version: v1
-    method: POST
-    path: /api/v1/customer/favourites
-    description: Toggles a store in the customer's favourites list. POST to save, DELETE to remove.
+    method: GET
+    path: /api/v1/stores/product
+    description: Returns all products for a specific store grouped by sub-category, with real-time stock levels.
     enabled: true
     security:
       authentication:
@@ -13,11 +13,11 @@ apis:
         roles:
         - customer
       authorization:
-        enabled: true
+        enabled: false
       rateLimit:
         enabled: true
-        requestsPerMinute: 60
-        requestsPerHour: 1000
+        requestsPerMinute: 30
+        requestsPerHour: 500
       encryption:
         enabled: true
         algorithm: AES256
@@ -31,41 +31,42 @@ apis:
         validation:
           minLength: 1
           errorMessage: Store ID is required
+      - name: subCategoryId
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: subCategoryId  is required
     response:
       successCode: 200
       contentType: application/json
       fields:
       - name: id
         type: Long
-        description: Generated FavouriteStore ID
+        description: Product identifier
       - name: history
         type: String
         description: history
       - name: data
         type: String
-        description: registered data
+        description: response data
       - name: currentStatus
         type: String
-        description: Record status
+        description: Current record status
         defaultValue: ACTIVE
-      - name: createdAt
+      - name: fetchedAt
         type: LocalDateTime
-        description: Creation timestamp
-      - name: createdBy
-        type: String
-        description: created by
+        description: Data retrieval timestamp
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: nkt.customer.toggle_favourite
+      processCode: nkt.stores.products
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:
-      - type: INSERT
-        entity: FavouriteStore
+      - type: SELECT
+        entity: Product
         mapping:
-          createdAt: "#{now()}"
-          status: ACTIVE
-    callbacks:
-    - event: SUCCESS
-      type: WEBHOOK
-      url: "https://api.nammakadaitheru.in/webhooks/favouritestore-event"
+          storeId: "#{request.storeId}"
+          categoryFilter: "#{request.categoryFilter}"
+          available: "#{request.available}"

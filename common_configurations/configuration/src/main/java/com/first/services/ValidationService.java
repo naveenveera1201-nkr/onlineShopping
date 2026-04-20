@@ -166,6 +166,7 @@ public class ValidationService {
                 case "BigDecimal" -> new BigDecimal(value.toString());
                 case "Boolean"    -> Boolean.parseBoolean(value.toString());
                 case "LocalDate"  -> LocalDate.parse(value.toString());
+                case "Array"  -> value;
                 default           -> value.toString();
             };
         } catch (Exception e) {

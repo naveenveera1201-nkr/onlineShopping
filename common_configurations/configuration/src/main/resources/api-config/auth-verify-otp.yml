@@ -53,8 +53,8 @@ apis:
         location: BODY
         required: true
         validation:
-          pattern: ^(customer|store)$
-          errorMessage: userType must be 'customer' or 'store'
+          pattern: ^(customer|business)$
+          errorMessage: userType must be 'customer' or 'business'
       - name: purpose
         type: String
         location: BODY

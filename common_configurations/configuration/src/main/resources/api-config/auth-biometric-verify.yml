@@ -44,7 +44,7 @@ apis:
         location: BODY
         required: true
         validation:
-          pattern: ^(customer|store)$
+          pattern: ^(customer|business)$
           errorMessage: userType must be 'customer' or 'store'
     response:
       successCode: 200

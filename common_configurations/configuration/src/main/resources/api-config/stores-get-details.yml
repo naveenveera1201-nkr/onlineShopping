@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - PUBLIC
+        - customer
       authorization:
         enabled: false
       rateLimit:
@@ -53,7 +53,7 @@ apis:
         description: Data retrieval timestamp
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p116
+      processCode: nkt.stores.get_details
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

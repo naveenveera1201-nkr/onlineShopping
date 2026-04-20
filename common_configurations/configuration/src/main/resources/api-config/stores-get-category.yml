@@ -1,10 +1,10 @@
 apis:
-  - id: orders-list
-    name: Get Customer Order History
+  - id: stores-get-products
+    name: Get Store Product Catalogue
     version: v1
     method: GET
-    path: /api/v1/orders/list
-    description: Returns the authenticated customer's full order history, newest first. Supports status filtering and pagination.
+    path: /api/v1/stores/category
+    description: Returns all categories for a specific store.
     enabled: true
     security:
       authentication:
@@ -13,46 +13,44 @@ apis:
         roles:
         - customer
       authorization:
-        enabled: true
+        enabled: false
       rateLimit:
         enabled: true
-        requestsPerMinute: 60
-        requestsPerHour: 1000
+        requestsPerMinute: 30
+        requestsPerHour: 500
       encryption:
         enabled: true
         algorithm: AES256
     request:
       contentType: application/json
       parameters:
-      - name: status
+      - name: storeId
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Store ID is required
+      - name: categoryFilter
         type: String
         location: QUERY
         required: false
         validation:
-          pattern: ^(placed|accepted|dispatched|delivered|cancelled)$
-          errorMessage: Invalid order status filter
-      - name: page
-        type: Integer
+          minLength: 1
+          errorMessage: Category filter must be a valid string
+      - name: available
+        type: Boolean
         location: QUERY
         required: false
         validation:
-          min: 0
-          errorMessage: Page must be 0 or greater
-      - name: limit
-        type: Integer
-        location: QUERY
-        required: false
-        validation:
-          min: 1
-          max: 100
-          errorMessage: Limit must be between 1 and 100
+          errorMessage: available must be a boolean
     response:
       successCode: 200
       contentType: application/json
       fields:
       - name: id
         type: Long
-        description: Order identifier
+        description: Product identifier
       - name: history
         type: String
         description: history
@@ -68,13 +66,13 @@ apis:
         description: Data retrieval timestamp
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: nkt.customer.order.details
+      processCode: nkt.stores.category
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:
       - type: SELECT
-        entity: Order
+        entity: Product
         mapping:
-          status: "#{request.status}"
-          page: "#{request.page}"
-          limit: "#{request.limit}"
+          storeId: "#{request.storeId}"
+          categoryFilter: "#{request.categoryFilter}"
+          available: "#{request.available}"

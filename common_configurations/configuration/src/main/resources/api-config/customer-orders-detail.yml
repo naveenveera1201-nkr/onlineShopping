@@ -1,10 +1,10 @@
 apis:
-  - id: orders-list
-    name: Get Customer Order History
+  - id: orders-get-detail
+    name: Get Order Detail
     version: v1
     method: GET
-    path: /api/v1/orders/list
-    description: Returns the authenticated customer's full order history, newest first. Supports status filtering and pagination.
+    path: /api/v1/orders/getAllOrders
+    description: Returns full detail of a orders.
     enabled: true
     security:
       authentication:
@@ -23,29 +23,7 @@ apis:
         algorithm: AES256
     request:
       contentType: application/json
-      parameters:
-      - name: status
-        type: String
-        location: QUERY
-        required: false
-        validation:
-          pattern: ^(placed|accepted|dispatched|delivered|cancelled)$
-          errorMessage: Invalid order status filter
-      - name: page
-        type: Integer
-        location: QUERY
-        required: false
-        validation:
-          min: 0
-          errorMessage: Page must be 0 or greater
-      - name: limit
-        type: Integer
-        location: QUERY
-        required: false
-        validation:
-          min: 1
-          max: 100
-          errorMessage: Limit must be between 1 and 100
+      parameters: []
     response:
       successCode: 200
       contentType: application/json
@@ -68,13 +46,11 @@ apis:
         description: Data retrieval timestamp
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: nkt.customer.order.details
+      processCode: nkt.order.details
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:
       - type: SELECT
         entity: Order
         mapping:
-          status: "#{request.status}"
-          page: "#{request.page}"
-          limit: "#{request.limit}"
+          orderId: "#{request.orderId}"

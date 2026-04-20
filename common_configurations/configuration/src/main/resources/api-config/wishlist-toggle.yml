@@ -1,10 +1,10 @@
 apis:
-  - id: customer-toggle-favourite
-    name: Save / Unsave Favourite Store
+  - id: wishlist-add
+    name: Add Item to Wishlist
     version: v1
     method: POST
-    path: /api/v1/customer/favourites
-    description: Toggles a store in the customer's favourites list. POST to save, DELETE to remove.
+    path: /api/v1/customer/wishlist/toggle
+    description: Adds an item to the customer's wishlist. Idempotent — no error if item already saved.
     enabled: true
     security:
       authentication:
@@ -24,20 +24,34 @@ apis:
     request:
       contentType: application/json
       parameters:
+      - name: stockId
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Item ID is required
       - name: storeId
         type: String
         location: BODY
         required: true
         validation:
           minLength: 1
-          errorMessage: Store ID is required
+          errorMessage: storeId ID is required
+      - name: stockCount
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: stockCount ID is required
     response:
       successCode: 200
       contentType: application/json
       fields:
       - name: id
         type: Long
-        description: Generated FavouriteStore ID
+        description: Generated WishlistItem ID
       - name: history
         type: String
         description: history
@@ -56,16 +70,16 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: nkt.customer.toggle_favourite
+      processCode: nkt.wishlist.toggle
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:
       - type: INSERT
-        entity: FavouriteStore
+        entity: WishlistItem
         mapping:
           createdAt: "#{now()}"
           status: ACTIVE
     callbacks:
     - event: SUCCESS
       type: WEBHOOK
-      url: "https://api.nammakadaitheru.in/webhooks/favouritestore-event"
+      url: "https://api.nammakadaitheru.in/webhooks/wishlistitem-event"

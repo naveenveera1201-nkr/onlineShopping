@@ -158,6 +158,63 @@
 			]
 		},
 		{
+			"Code": "nkt.discover.typesofstore",
+			"Collection": "type_of_store",
+			"Operation": "CUSTOM",
+			"HandlerKey": "DISCOVER_TYPES_OF_STORES",
+			"Protected": false
+		},
+		{
+			"Code": "nkt.stores.category",
+			"Collection": "stores",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORES_CATEGORIES",
+			"Protected": false,
+			"CriteriaFields": [
+				"categoryId"
+			],
+			"StaticCriteria": {
+				"status": "ACTIVE"
+			},
+			"RequiredFields": [
+				"storeId"
+			]
+		},
+		{
+			"Code": "nkt.stores.subcategory",
+			"Collection": "stores",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORES_SUBCATEGORIES",
+			"Protected": false,
+			"CriteriaFields": [
+				"categoryId"
+			],
+			"StaticCriteria": {
+				"status": "ACTIVE"
+			},
+			"RequiredFields": [
+				"storeId",
+				"categoryId"
+			]
+		},
+		{
+			"Code": "nkt.stores.products",
+			"Collection": "stocks",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORES_CATEGORIES_PRODUCTS",
+			"Protected": false,
+			"CriteriaFields": [
+				"categoryId"
+			],
+			"StaticCriteria": {
+				"status": "ACTIVE"
+			},
+			"RequiredFields": [
+				"storeId",
+				"subCategoryId"
+			]
+		},
+		{
 			"Code": "nkt.stores.list_by_category",
 			"Collection": "stores",
 			"Operation": "FIND_ALL",
@@ -228,11 +285,29 @@
 			"Protected": true,
 			"RequiredFields": [
 				"storeId",
-				"items",
+				"stocks",
 				"addressId",
 				"paymentMethod"
 			],
 			"UserIdField": "customerId"
+		},
+		{
+			"Code": "nkt.order.details",
+			"Collection": "orders",
+			"Operation": "CUSTOM",
+			"HandlerKey": "CUSTOMER_ORDER_DETAILS",
+			"Protected": true
+		},
+		{
+			"Code": "nkt.order.view",
+			"Collection": "orders",
+			"Operation": "CUSTOM",
+			"HandlerKey": "CUSTOMER_ORDER_VIEW",
+			"Protected": true,
+			"RequiredFields": [
+				"orderId"
+			],
+			"UserIdField": "userid"
 		},
 		{
 			"Code": "nkt.order.history",
@@ -259,7 +334,8 @@
 			"Protected": true,
 			"RequiredFields": [
 				"orderId"
-			]
+			],
+			"UserIdField": "userid"
 		},
 		{
 			"Code": "nkt.order.cancel",
@@ -317,7 +393,7 @@
 			"StaticCriteria": {
 				"status": "ACTIVE"
 			},
-			"UserIdField": "customerId"
+			"UserIdField": "userId"
 		},
 		{
 			"Code": "nkt.wishlist.add",
@@ -327,6 +403,18 @@
 			"Protected": true,
 			"RequiredFields": [
 				"itemId"
+			]
+		},
+		{
+			"Code": "nkt.wishlist.toggle",
+			"Collection": "wishlist",
+			"Operation": "CUSTOM",
+			"HandlerKey": "WISHLIST_TOGGLE",
+			"Protected": true,
+			"RequiredFields": [
+				"storeId",
+				"stockId",
+				"stockCount"
 			]
 		},
 		{
@@ -486,7 +574,8 @@
 			"Protected": true,
 			"RequiredFields": [
 				"orderId"
-			]
+			],
+			"UserIdField": "customerId"
 		},
 		{
 			"Code": "nkt.store_order.reject",
@@ -496,7 +585,8 @@
 			"Protected": true,
 			"RequiredFields": [
 				"orderId"
-			]
+			],
+			"UserIdField": "customerId"
 		},
 		{
 			"Code": "nkt.store_order.dispatch",
@@ -508,7 +598,8 @@
 				"orderId",
 				"agentName",
 				"agentPhone"
-			]
+			],
+			"UserIdField": "customerId"
 		},
 		{
 			"Code": "nkt.store_order.deliver",
@@ -518,7 +609,8 @@
 			"Protected": true,
 			"RequiredFields": [
 				"orderId"
-			]
+			],
+			"UserIdField": "customerId"
 		}
 	],
 	"Processes": [

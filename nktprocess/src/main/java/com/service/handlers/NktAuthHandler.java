@@ -54,35 +54,21 @@ public class NktAuthHandler {
 			String purpose = str(data, "purpose");
 			String userType = str(data, "userType");
 
-			if ("register".equals(purpose)) {
-				if (userType.equalsIgnoreCase("business")
-						&& repo.exists("businessusers", Map.of("identifier", identifier))) {
-//					throw new RuntimeException("Business user already exists");
-					return json(mapper, Map.of(
-	                        "statusCode", "N400",
-	                        "statusDesc", "Business user already exists"
-	                ));
-				}
+			String tableName = userType + def.getCollection();
+			Map<String, Object> filter = Map.of("identifier", identifier, "userType", str(data, "identifierType"),
+					"status", "ACTIVE");
 
-				if (userType.equalsIgnoreCase("customer")
-						&& repo.exists("customerusers", Map.of("identifier", identifier))) {
-//					throw new RuntimeException("Customer user already exists");
-					return json(mapper, Map.of(
-	                        "statusCode", "N400",
-	                        "statusDesc", "customer user already exists"
-	                ));
-					
-				}
+			boolean exists = repo.exists(tableName, filter);
 
-				if (userType.equalsIgnoreCase("admin")
-						&& repo.exists("adminusers", Map.of("identifier", identifier))) {
-//					throw new RuntimeException("Admin user already exists");
-					return json(mapper, Map.of(
-	                        "statusCode", "N400",
-	                        "statusDesc", "Admin user already exists"
-	                ));
-				}
+			if ("register".equalsIgnoreCase(purpose) && exists) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", userType + " user already exists"));
 			}
+
+			if (!"register".equalsIgnoreCase(purpose) && !exists) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc",
+						userType + " User not found. Please register first"));
+			}
+			
 			String otp = String.format("%04d", new Random().nextInt(10000));
 			repo.deleteAll("otp_records", Map.of("identifier", identifier));
 
@@ -110,6 +96,7 @@ public class NktAuthHandler {
             String otp        = str(data, "otp");
             String purpose    = str(data, "purpose");
             String userType   =  str(data, "userType");
+            
 
 			Map<String, Object> rec = repo.findOneByCriteria("otp_records",
 					Map.of("identifier", identifier, "used", false, "userType", userType)).orElse(null);
@@ -121,6 +108,8 @@ public class NktAuthHandler {
                 ));
             }
 
+            String tableName = rec.get("userType") + def.getCollection();
+            
 			LocalDateTime createdAt = LocalDateTime.parse(rec.get("createdAt").toString());
 
 			LocalDateTime expiryTime = createdAt.plusMinutes(otpExpiration != null ? Long.parseLong(otpExpiration) : 3);
@@ -153,8 +142,6 @@ public class NktAuthHandler {
             
             Map<String, Object> user;
             
-            String tableName = rec.get("userType") + def.getCollection();
-           
             if ("register".equals(purpose)) {
                 user = new LinkedHashMap<>();
                 user.put("identifier",     identifier);
@@ -170,8 +157,11 @@ public class NktAuthHandler {
 
 				user = repo.insert(tableName, user);
             } else {
-                user = repo.findOne(tableName, "identifier", identifier)
-                        .orElseThrow(() -> new RuntimeException("User not found"));
+				user = repo.findOne(tableName, "identifier", identifier).orElse(null);
+               
+				return json(mapper,Map.of(
+            			"messsage",  "User not found",
+            			"status", "Failed"));
             }
 
             String uid  = user.get("id").toString();

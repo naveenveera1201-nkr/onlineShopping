@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - CUSTOMER
+        - customer
       authorization:
         enabled: true
       rateLimit:
@@ -46,7 +46,7 @@ apis:
         description: Data retrieval timestamp
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p130
+      processCode: nkt.wishlist.get
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

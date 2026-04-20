@@ -21,6 +21,8 @@ jwt:
   refresh-expiration: 259200000000
 otp:
   expiration: 30     # 3 mins
+image:
+  basepath: D:\Naveen\NKT\
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging:

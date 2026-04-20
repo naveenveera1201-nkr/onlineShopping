@@ -12,7 +12,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - CUSTOMER
+        - customer
       authorization:
         enabled: true
       rateLimit:
@@ -39,7 +39,7 @@ apis:
         validation:
           minLength: 1
           errorMessage: Category ID is required
-      - name: items
+      - name: stocks
         type: Array
         location: BODY
         required: true
@@ -112,7 +112,7 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p121
+      processCode: nkt.order.place
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

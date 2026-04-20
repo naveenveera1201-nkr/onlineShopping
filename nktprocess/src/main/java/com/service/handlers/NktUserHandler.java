@@ -2,17 +2,18 @@ package com.service.handlers;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.models.nkt.NktProcessDefinition;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -199,37 +200,176 @@ public class NktUserHandler {
     }
 
     /* ── CUSTOMER_TOGGLE_FAV ────────────────────────────────────────────── */
+//    @SuppressWarnings("unchecked")
+//    public NktOperationHandler toggleFavourite() {
+//        return (data, userId, repo, mapper, def) -> {
+//            String storeId = str(data, "storeId");
+//            repo.findById("stores", storeId)
+//                    .orElseThrow(() -> new RuntimeException("Store not found"));
+//            Map<String, Object> user = repo.findById("users", userId)
+//                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+//            List<String> favs = (List<String>) user.getOrDefault("favouriteStoreIds", new ArrayList<>());
+//            boolean saved;
+//            if (favs.contains(storeId)) { favs.remove(storeId); saved = false; }
+//            else                        { favs.add(storeId);    saved = true;  }
+//            repo.updateById("users", userId,
+//                    Map.of("favouriteStoreIds", favs, "updatedAt", LocalDateTime.now().toString()));
+//            return json(mapper, Map.of("saved", saved, "storeId", storeId));
+//        };
+//    }
+    
     @SuppressWarnings("unchecked")
     public NktOperationHandler toggleFavourite() {
         return (data, userId, repo, mapper, def) -> {
+
             String storeId = str(data, "storeId");
-            repo.findById("stores", storeId)
-                    .orElseThrow(() -> new RuntimeException("Store not found"));
-            Map<String, Object> user = repo.findById("users", userId)
-                    .orElseThrow(() -> new RuntimeException("Customer not found"));
-            List<String> favs = (List<String>) user.getOrDefault("favouriteStoreIds", new ArrayList<>());
+
+            // ✅ 1. Validate input
+            if (storeId == null || storeId.isBlank()) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "storeId is required"
+                ));
+            }
+
+            // ✅ 2. Validate store (ACTIVE only)
+            Map<String, Object> store = repo
+                    .findOne("stores", "storeId", storeId)
+                    .orElse(null);
+
+            if (store == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N404",
+                        "statusDesc", "Store not found or inactive"
+                ));
+            }
+
+
+    		String tableName = data.get("userType") + def.getCollection();
+    		
+            // ✅ 3. Fetch user
+            Map<String, Object> user = repo.findById(tableName, userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // ✅ 4. Safe list copy (avoid modifying original reference)
+            List<String> favs = new ArrayList<>(
+                    (List<String>) user.getOrDefault("favouriteStoreIds", new ArrayList<>())
+            );
+
             boolean saved;
-            if (favs.contains(storeId)) { favs.remove(storeId); saved = false; }
-            else                        { favs.add(storeId);    saved = true;  }
-            repo.updateById("users", userId,
-                    Map.of("favouriteStoreIds", favs, "updatedAt", LocalDateTime.now().toString()));
-            return json(mapper, Map.of("saved", saved, "storeId", storeId));
+
+            // ✅ 5. Toggle logic
+            if (favs.contains(storeId)) {
+                favs.remove(storeId);
+                saved = false;
+            } else {
+                favs.add(storeId);
+                saved = true;
+            }
+
+            // ✅ 6. Remove duplicates (extra safety)
+            favs = favs.stream().distinct().collect(Collectors.toList());
+            
+
+
+            // ✅ 7. Update user
+            repo.updateById(tableName, userId, Map.of(
+                    "favouriteStoreIds", favs,
+                    "updatedAt", LocalDateTime.now().toString()
+            ));
+
+            // ✅ 8. Clean response
+            return json(mapper, Map.of(
+                    "data", Map.of(
+                            "storeId", storeId,
+                            "saved", saved
+                    ),
+                    "statusCode", "N200",
+                    "statusDesc", saved ? "Added to favourites" : "Removed from favourites"
+            ));
         };
     }
 
     /* ── STORE_PROFILE_GET ──────────────────────────────────────────────── */
+    @SuppressWarnings("unchecked")
     public NktOperationHandler storeProfileGet() {
         return (data, userId, repo, mapper, def) -> {
-            Map<String, Object> store = repo.findOne("stores", "ownerId", userId)
-                    .orElseThrow(() -> new RuntimeException("Store not found for owner"));
-            return json(mapper, store);
+
+            // ✅ Step 1: Validate user
+            if (userId == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N401",
+                        "statusDesc", "Unauthorized"
+                ));
+            }
+
+            // ✅ Step 2: Fetch store
+            Map<String, Object> store = repo.findOne("stores", "userId", userId)
+                    .orElse(null);
+
+            if (store == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N404",
+                        "statusDesc", "Store not found for owner"
+                ));
+            }
+
+            // ✅ Step 3: Optional - Remove sensitive/internal fields
+            store.remove("internalNotes");
+            store.remove("updatedBy");
+
+            // ✅ Step 4: Attach Base64 images (if needed)
+            enrichImages(store, "logo");
+            enrichImages(store, "bannerImage");
+
+            // ✅ Step 5: Response format
+            return json(mapper, Map.of(
+                    "data", store,
+                    "statusCode", "N200",
+                    "statusDesc", "Success"
+            ));
         };
+    }
+    
+    @SuppressWarnings("unchecked")
+    private void enrichImages(Map<String, Object> doc, String field) {
+
+        Object obj = doc.get(field);
+
+        if (!(obj instanceof List<?>)) return;
+
+        List<Map<String, Object>> images = ((List<?>) obj).stream()
+                .filter(e -> e instanceof Map)
+                .map(e -> (Map<String, Object>) e)
+                .collect(Collectors.toList());
+
+        for (Map<String, Object> img : images) {
+
+            String path = img.get("localPath") != null
+                    ? img.get("localPath").toString()
+                    : null;
+
+            if (path == null) continue;
+
+            try {
+                byte[] bytes = java.nio.file.Files.readAllBytes(
+                        java.nio.file.Paths.get("/base/path" + path) // ✅ add your base path
+                );
+
+                String base64 = Base64.getEncoder().encodeToString(bytes);
+
+                img.put("base64", base64);
+
+            } catch (Exception e) {
+                // optional log
+            }
+        }
     }
 
     /* ── STORE_PROFILE_UPDATE ───────────────────────────────────────────── */
     public NktOperationHandler storeProfileUpdate() {
         return (data, userId, repo, mapper, def) -> {
-            Map<String, Object> store = repo.findOne("stores", "ownerId", userId)
+            Map<String, Object> store = repo.findOne("stores", "userId", userId)
                     .orElseThrow(() -> new RuntimeException("Store not found for owner"));
             Map<String, Object> updates = new LinkedHashMap<>();
             if (data.get("name")  != null) updates.put("name",  str(data, "name"));
@@ -244,7 +384,7 @@ public class NktUserHandler {
     /* ── STORE_PROFILE_TOGGLE ───────────────────────────────────────────── */
     public NktOperationHandler storeProfileToggle() {
         return (data, userId, repo, mapper, def) -> {
-            Map<String, Object> store = repo.findOne("stores", "ownerId", userId)
+            Map<String, Object> store = repo.findOne("stores", "userId", userId)
                     .orElseThrow(() -> new RuntimeException("Store not found for owner"));
             boolean isOpen = Boolean.parseBoolean(str(data, "isOpen"));
             repo.updateById("stores", store.get("id").toString(),
@@ -259,28 +399,69 @@ public class NktUserHandler {
     /* ── STORE_PROFILE_DASHBOARD ────────────────────────────────────────── */
     public NktOperationHandler storeProfileDashboard() {
         return (data, userId, repo, mapper, def) -> {
-            Map<String, Object> store = repo.findOne("stores", "ownerId", userId)
+
+            // ✅ Step 1: Get store
+            Map<String, Object> store = repo.findOne("stores", "userId", userId)
                     .orElseThrow(() -> new RuntimeException("Store not found for owner"));
-            String storeId  = store.get("id").toString();
-            String today    = LocalDateTime.now().toLocalDate().toString();
 
+            String storeId = store.get("storeId").toString();
+            String today   = LocalDateTime.now().toLocalDate().toString();
+
+            // ✅ Step 2: Fetch orders (only required fields ideally)
             List<Map<String, Object>> orders = repo.findAll("orders", Map.of("storeId", storeId));
-            long newOrders  = orders.stream().filter(o -> "placed".equals(o.get("status"))).count();
-            long todayCount = orders.stream().filter(o -> today.equals(
-                    o.getOrDefault("createdAt", "").toString().substring(0, 10))).count();
-            double todayRev = orders.stream()
-                    .filter(o -> "delivered".equals(o.get("status")) && today.equals(
-                            o.getOrDefault("createdAt", "").toString().substring(0, 10)))
-                    .mapToDouble(o -> o.get("totalAmount") != null
-                            ? Double.parseDouble(o.get("totalAmount").toString()) : 0).sum();
 
+            long newOrders = 0;
+            long todayOrders = 0;
+            double todayRevenue = 0.0;
+
+            for (Map<String, Object> o : orders) {
+
+                String status = o.get("status") != null
+                        ? o.get("status").toString().toLowerCase()
+                        : "";
+
+                String createdAt = o.get("createdAt") != null
+                        ? o.get("createdAt").toString()
+                        : "";
+
+                // ✅ Safe date extraction
+                String orderDate = createdAt.length() >= 10 ? createdAt.substring(0, 10) : "";
+
+                // ✅ Count new orders
+                if ("placed".equals(status)) {
+                    newOrders++;
+                }
+
+                // ✅ Today orders
+                if (today.equals(orderDate)) {
+                    todayOrders++;
+
+                    // ✅ Today revenue (only delivered)
+                    if ("delivered".equals(status)) {
+                        Object amt = o.get("totalAmount");
+                        if (amt != null) {
+                            try {
+                                todayRevenue += Double.parseDouble(amt.toString());
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+            }
+
+            // ✅ Final response
             Map<String, Object> dash = new LinkedHashMap<>();
-            dash.put("storeId",       storeId);
-            dash.put("newOrders",     newOrders);
-            dash.put("todayOrders",   todayCount);
-            dash.put("todayRevenue",  todayRev);
-            dash.put("currentStatus", Boolean.TRUE.equals(store.get("open")) ? "OPEN" : "CLOSED");
-            return json(mapper, dash);
+            dash.put("storeId", storeId);
+            dash.put("newOrders", newOrders);
+            dash.put("todayOrders", todayOrders);
+            dash.put("todayRevenue", todayRevenue);
+            dash.put("currentStatus",
+                    Boolean.TRUE.equals(store.get("open")) ? "OPEN" : "CLOSED");
+
+            return json(mapper, Map.of(
+                    "data", dash,
+                    "statusCode", "N200",
+                    "statusDesc", "Success"
+            ));
         };
     }
 

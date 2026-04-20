@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.bson.types.ObjectId;
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
@@ -53,6 +54,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class NktCoreService {
+	
+	@Value("${image.basepath}")
+	private String basePath;
 
     private final NktProcessConfigLoader configLoader;
     private final NktDynamicRepository   repo;
@@ -94,6 +98,7 @@ public class NktCoreService {
         handlers.put("NOTIFICATION_REGISTER_DEVICE", userHandler.registerDevice());
 
         // Catalogue / Stock / Location / Discover
+        handlers.put("DISCOVER_TYPES_OF_STORES", catalogueHandler.typesOfStore());
         handlers.put("DISCOVER_NEARBY_STORES",   catalogueHandler.nearbyStores());
         handlers.put("STORES_GET_PRODUCTS",      catalogueHandler.storeProducts());
         handlers.put("STORES_GET_AVAILABILITY",  catalogueHandler.storeAvailability());
@@ -105,7 +110,10 @@ public class NktCoreService {
         handlers.put("STOCK_TOGGLE_AVAILABILITY",catalogueHandler.stockToggleAvailability());
         handlers.put("STOCK_DELETE",             catalogueHandler.stockDelete());
         handlers.put("LOCATION_REVERSE_GEOCODE", catalogueHandler.reverseGeocode());
-        handlers.put("LOCATION_GLOBAL_SEARCH",   catalogueHandler.globalSearch());
+		handlers.put("LOCATION_GLOBAL_SEARCH", catalogueHandler.globalSearch());
+		handlers.put("STORES_CATEGORIES", catalogueHandler.getCategoriesByStore());
+		handlers.put("STORES_SUBCATEGORIES", catalogueHandler.getSubCategories());
+		handlers.put("STORES_CATEGORIES_PRODUCTS", catalogueHandler.getProductsBySubCategory());
 
         // Orders / Wishlist / StoreOrders
         handlers.put("ORDER_VALIDATE_CART", orderHandler.validateCart());
@@ -122,6 +130,9 @@ public class NktCoreService {
         handlers.put("STORE_ORDER_REJECT",  orderHandler.storeOrderReject());
         handlers.put("STORE_ORDER_DISPATCH",orderHandler.storeOrderDispatch());
         handlers.put("STORE_ORDER_DELIVER", orderHandler.storeOrderDeliver());
+        handlers.put("WISHLIST_TOGGLE",        orderHandler.wishlistToggle());
+		handlers.put("CUSTOMER_ORDER_DETAILS", orderHandler.customerOrdersList());
+		handlers.put("CUSTOMER_ORDER_VIEW", orderHandler.orderGetDetail());
 
         // Payments
         handlers.put("PAYMENT_INITIATE", paymentHandler.initiatePayment());
@@ -202,16 +213,37 @@ public class NktCoreService {
 
         List<Map<String, Object>> results = repo.findAllSorted(
                 def.getCollection(), criteria, def.effectiveSortField(), dir, skip, limit);
-        return toJson(results);
+        return toJson(Map.of("data",results));
     }
 
     private String execFindById(NktProcessDefinition def, Map<String, Object> data) {
-        String id = str(data, def.effectiveIdField());
-        if (id == null) throw new RuntimeException("Missing id field: " + def.effectiveIdField());
-        return toJson(repo.findById(def.getCollection(), id)
-                .orElseThrow(() -> new RuntimeException("Document not found: " + id)));
-    }
 
+        String id = str(data, def.effectiveIdField());
+
+        if (id == null || id.isBlank()) {
+            throw new RuntimeException("Missing id field: " + def.effectiveIdField());
+        }
+
+        Object dbId = org.bson.types.ObjectId.isValid(id)
+                ? new org.bson.types.ObjectId(id)
+                : id;
+
+        Map<String, Object> result = repo.findOne(def.getCollection(), "_id", dbId)
+                .orElseThrow(() -> new RuntimeException("Document not found: " + id));
+
+        // ✅ ADD IMAGE ENRICHMENT ONLY FOR STORES
+        if ("stores".equalsIgnoreCase(def.getCollection())) {
+            enrichStoreImages(result);
+        }
+
+        return toJson(Map.of(
+                "data", result,
+                "statusCode", "N200",
+                "statusDesc", "Success"
+        ));
+    }
+    
+    
 	private String execFindByUserId(NktProcessDefinition def, String userId, String userType) {
 		
 		String tableName = userType + def.getCollection();
@@ -337,5 +369,53 @@ public class NktCoreService {
     private String toJson(Object obj) {
         try { return mapper.writeValueAsString(obj); }
         catch (Exception e) { return "{\"error\":\"serialisation failed\"}"; }
+    }
+    
+    @SuppressWarnings("unchecked")
+    private void enrichStoreImages(Map<String, Object> store) {
+
+        // 👉 LOGO LIST
+        Object logosObj = store.get("logo");
+        if (logosObj instanceof List<?>) {
+            List<Map<String, Object>> logos = (List<Map<String, Object>>) logosObj;
+
+            for (Map<String, Object> img : logos) {
+                String path = (String) img.get("localPath");
+                img.put("base64", toBase64(path));
+            }
+        }
+
+        // 👉 BANNER LIST
+        Object bannersObj = store.get("bannerImage");
+        if (bannersObj instanceof List<?>) {
+            List<Map<String, Object>> banners = (List<Map<String, Object>>) bannersObj;
+
+            for (Map<String, Object> img : banners) {
+                String path = (String) img.get("localPath");
+                img.put("base64", toBase64(path));
+            }
+        }
+    }
+    
+    private String toBase64(String relativePath) {
+        try {
+            if (relativePath == null) return null;
+
+            java.nio.file.Path path = java.nio.file.Paths.get(basePath + relativePath);
+
+            if (!java.nio.file.Files.exists(path)) {
+                return null;
+            }
+
+            byte[] bytes = java.nio.file.Files.readAllBytes(path);
+
+            String mime = java.nio.file.Files.probeContentType(path);
+
+            return "data:" + mime + ";base64," +
+                    java.util.Base64.getEncoder().encodeToString(bytes);
+
+        } catch (Exception e) {
+            return null; // never break API because of image
+        }
     }
 }

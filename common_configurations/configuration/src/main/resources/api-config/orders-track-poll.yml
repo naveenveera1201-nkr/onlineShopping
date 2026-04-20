@@ -3,7 +3,7 @@ apis:
     name: Real-time Order Tracking
     version: v1
     method: GET
-    path: /api/v1/orders/{orderId}/track
+    path: /api/v1/orders/track
     description: Returns the current GPS location of the delivery agent and live ETA. Poll every 10s or use WebSocket.
     enabled: true
     security:
@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - CUSTOMER
+        - customer
       authorization:
         enabled: true
       rateLimit:
@@ -26,7 +26,7 @@ apis:
       parameters:
       - name: orderId
         type: String
-        location: PATH
+        location: BODY
         required: true
         validation:
           minLength: 1
@@ -53,7 +53,7 @@ apis:
         description: Data retrieval timestamp
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p124
+      processCode: nkt.order.track
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

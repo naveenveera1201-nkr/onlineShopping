@@ -22,7 +22,8 @@ spring:
       - classpath:api-config/stores-get-services.yml
       - classpath:api-config/stores-get-availability.yml
       - classpath:api-config/cart-validate.yml
-      - classpath:api-config/orders-place.yml
+      - classpath:api-config/customer-orders-place.yml
+      - classpath:api-config/customer-orders-detail.yml
       - classpath:api-config/orders-list.yml
       - classpath:api-config/orders-get-detail.yml
       - classpath:api-config/orders-track-poll.yml
@@ -55,3 +56,8 @@ spring:
       - classpath:api-config/store-orders-deliver.yml
       - classpath:api-config/ws-customer-order-tracking.yml
       - classpath:api-config/ws-store-order-alerts.yml
+      - classpath:api-config/types-of-stores.yml
+      - classpath:api-config/stores-get-category.yml
+      - classpath:api-config/stores-get-subcategory.yml
+      - classpath:api-config/stores-get-subcategory-product.yml
+      - classpath:api-config/wishlist-toggle.yml

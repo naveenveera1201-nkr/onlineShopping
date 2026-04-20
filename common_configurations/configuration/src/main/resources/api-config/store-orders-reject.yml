@@ -3,7 +3,7 @@ apis:
     name: Reject Order Entirely
     version: v1
     method: POST
-    path: /api/v1/store/orders/{orderId}/reject
+    path: /api/v1/store/orders/reject
     description: Fully rejects an incoming order. Reserved stock is released and a full refund is initiated for prepaid orders.
     enabled: true
     security:
@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - STORE
+        - business
       authorization:
         enabled: true
       rateLimit:
@@ -26,7 +26,7 @@ apis:
       parameters:
       - name: orderId
         type: String
-        location: PATH
+        location: BODY
         required: true
         validation:
           minLength: 1
@@ -63,7 +63,7 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p149
+      processCode: nkt.store_order.reject
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

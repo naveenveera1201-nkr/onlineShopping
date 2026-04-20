@@ -3,7 +3,7 @@ apis:
     name: Mark Order as Dispatched
     version: v1
     method: POST
-    path: /api/v1/store/orders/{orderId}/dispatch
+    path: /api/v1/store/orders/dispatch
     description: Marks an accepted order as dispatched and optionally assigns a delivery agent. Activates real-time tracking.
     enabled: true
     security:
@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - STORE
+        - business
       authorization:
         enabled: true
       rateLimit:
@@ -26,7 +26,7 @@ apis:
       parameters:
       - name: orderId
         type: String
-        location: PATH
+        location: BODY
         required: true
         validation:
           minLength: 1
@@ -78,7 +78,7 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p150
+      processCode: nkt.store_order.dispatch
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

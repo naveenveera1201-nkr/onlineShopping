@@ -1,10 +1,10 @@
 apis:
-  - id: discover-nearby-stores
-    name: Get Nearby Stores Strip
+  - id: stores-get-products
+    name: Get Store Product Catalogue
     version: v1
     method: GET
-    path: /api/v1/discover/nearby
-    description: Returns a curated list of nearby stores across all categories, based on the customer's current GPS location.
+    path: /api/v1/stores/subcategory
+    description: Returns all products for a specific store grouped by sub-category, with real-time stock levels.
     enabled: true
     security:
       authentication:
@@ -13,53 +13,51 @@ apis:
         roles:
         - customer
       authorization:
-        enabled: true
+        enabled: false
       rateLimit:
         enabled: true
-        requestsPerMinute: 60
-        requestsPerHour: 1000
+        requestsPerMinute: 30
+        requestsPerHour: 500
       encryption:
         enabled: true
         algorithm: AES256
     request:
       contentType: application/json
       parameters:
-      - name: latitude
-        type: Double
-        location: BODY
-        required: true
-        validation:
-          min: -90.0
-          max: 90.0
-          errorMessage: Latitude must be between -90 and 90
-      - name: longitude
-        type: Double
-        location: BODY
-        required: true
-        validation:
-          min: -180.0
-          max: 180.0
-          errorMessage: Longitude must be between -180 and 180
-      - name: radiusKm
-        type: Double
-        location: BODY
-        required: false
-        defaultValue: '5'
-        validation:
-          min: 0.1
-          max: 50.0
-          errorMessage: Radius must be between 0.1 and 50 km
-      - name: typesOfStore
+      - name: storeId
         type: String
         location: BODY
         required: true
+        validation:
+          minLength: 1
+          errorMessage: Store ID is required
+      - name: categoryId
+        type: String
+        location: BODY
+        required: true
+        validation:
+          minLength: 1
+          errorMessage: Store ID is required
+      - name: categoryFilter
+        type: String
+        location: QUERY
+        required: false
+        validation:
+          minLength: 1
+          errorMessage: Category filter must be a valid string
+      - name: available
+        type: Boolean
+        location: QUERY
+        required: false
+        validation:
+          errorMessage: available must be a boolean
     response:
       successCode: 200
       contentType: application/json
       fields:
       - name: id
         type: Long
-        description: Store identifier
+        description: Product identifier
       - name: history
         type: String
         description: history
@@ -75,13 +73,13 @@ apis:
         description: Data retrieval timestamp
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: nkt.discover.nearby_stores
+      processCode: nkt.stores.subcategory
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:
       - type: SELECT
-        entity: Store
+        entity: Product
         mapping:
-          latitude: "#{request.latitude}"
-          longitude: "#{request.longitude}"
-          radiusKm: "#{request.radiusKm}"
+          storeId: "#{request.storeId}"
+          categoryFilter: "#{request.categoryFilter}"
+          available: "#{request.available}"

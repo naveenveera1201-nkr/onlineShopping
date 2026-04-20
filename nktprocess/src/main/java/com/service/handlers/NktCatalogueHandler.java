@@ -1,12 +1,22 @@
 package com.service.handlers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.repository.NktDynamicRepository;
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.repository.NktDynamicRepository;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Handles catalogue/discovery/location operations requiring custom logic.
@@ -21,6 +31,9 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class NktCatalogueHandler {
+	
+	@Value("${image.basepath}")
+	private String basePath;
 
     private String str(Map<String, Object> d, String k) {
         Object v = d.get(k); return v == null ? null : v.toString();
@@ -98,11 +111,13 @@ public class NktCatalogueHandler {
                     ? Double.parseDouble(str(data, "radiusKm"))
                     : 5.0;
 
-            List<Map<String, Object>> nearby = repo.findAll("stores", Map.of("status", "ACTIVE"))
+            List<Map<String, Object>> nearby = repo.findAll(def.getCollection(), Map.of("status", "ACTIVE","typeOfStore",str(data, "typesOfStore")))
                     .stream()
                     .map(store -> {
-                        Object addrObj = store.get("address");
-                        if (!(addrObj instanceof Map)) return null;
+                        Object addrObj = store.get("location");
+						
+                        if (!(addrObj instanceof Map))
+							return null;
 
                         @SuppressWarnings("unchecked")
                         Map<String, Object> addr = (Map<String, Object>) addrObj;
@@ -119,12 +134,39 @@ public class NktCatalogueHandler {
                         );
 
                         // ✅ filter by radius
-                        if (distance > radius) return null;
+						if (distance > radius)
+							return null;
 
-                        // ✅ attach distance
-                        store.put("distanceKm", distance);
+						Map<String, Object> result = new LinkedHashMap<>(store);
 
-                        return store;
+						// ✅ Convert logo (only first image for performance)
+						List<Map<String, Object>> logos = (List<Map<String, Object>>) store.get("logo");
+						if (logos != null && !logos.isEmpty()) {
+						    Map<String, Object> img = logos.get(0);
+
+						    Map<String, Object> newImg = new LinkedHashMap<>();
+						    newImg.put("filename", img.get("filename"));
+						    newImg.put("base64", toBase64(img.get("localPath").toString()));
+
+						    result.put("logo", List.of(newImg));
+						}
+
+						// ✅ Convert banner (only first image)
+						List<Map<String, Object>> banners = (List<Map<String, Object>>) store.get("bannerImage");
+						if (banners != null && !banners.isEmpty()) {
+						    Map<String, Object> img = banners.get(0);
+
+						    Map<String, Object> newImg = new LinkedHashMap<>();
+						    newImg.put("filename", img.get("filename"));
+						    newImg.put("base64", toBase64(img.get("localPath").toString()));
+
+						    result.put("bannerImage", List.of(newImg));
+						}
+
+						// ✅ distance
+						result.put("distanceKm", distance);
+
+						return result;
                     })
                     .filter(Objects::nonNull)
                     .sorted(Comparator.comparingDouble(s -> (double) s.get("distanceKm")))
@@ -138,6 +180,349 @@ public class NktCatalogueHandler {
                     "statusDesc", "Success"
             ));
         };
+    }
+    
+	/****
+	 * commented for stores categories and subcategories as it requires more complex
+	 * data structure and handling, can be implemented in future if needed
+	 ****/
+//    public NktOperationHandler storeWithCategories() {
+//        return (data, userId, repo, mapper, def) -> {
+//
+//            String storeId = str(data, "storeId");
+//
+//            if (storeId == null || storeId.isBlank()) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N400",
+//                        "statusDesc", "storeId is required"
+//                ));
+//            }
+//
+//            // ✅ 1. Fetch Store
+//            Map<String, Object> store = repo
+//                    .findOne("stores", "storeId", storeId)
+//                    .orElse(null);
+//
+//            if (store == null) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N404",
+//                        "statusDesc", "Store not found"
+//                ));
+//            }
+//
+//            List<Map<String, Object>> storeCategories =
+//                    (List<Map<String, Object>>) store.getOrDefault("categories", new ArrayList<>());
+//
+//            if (storeCategories.isEmpty()) {
+//                store.put("categories", Collections.emptyList());
+//                return json(mapper, Map.of(
+//                        "data", store,
+//                        "statusCode", "N200",
+//                        "statusDesc", "Success"
+//                ));
+//            }
+//
+//            // ✅ 2. Fetch all categories & subcategories (bulk fetch)
+//            List<Map<String, Object>> allCategories =
+//                    repo.findAll("categories", Map.of("status", "ACTIVE"));
+//
+//            List<Map<String, Object>> allSubCategories =
+//                    repo.findAll("subcategories", Map.of("status", "ACTIVE"));
+//
+//            Map<String, Map<String, Object>> categoryMap = allCategories.stream()
+//                    .collect(Collectors.toMap(
+//                            c -> c.get("categoryId").toString(),
+//                            c -> c
+//                    ));
+//
+//            Map<String, Map<String, Object>> subCategoryMap = allSubCategories.stream()
+//                    .collect(Collectors.toMap(
+//                            s -> s.get("subcategoryId").toString(),
+//                            s -> s
+//                    ));
+//
+//            // ✅ 3. Enrich categories
+//            List<Map<String, Object>> enrichedCategories = new ArrayList<>();
+//
+//            for (Map<String, Object> sc : storeCategories) {
+//
+//                String catId = sc.get("categoryId").toString();
+//                Map<String, Object> masterCat = categoryMap.get(catId);
+//
+//                if (masterCat == null) continue;
+//
+//                Map<String, Object> newCat = new LinkedHashMap<>();
+//                newCat.put("categoryId", catId);
+//                newCat.put("name", masterCat.get("name"));
+//
+//                // ✅ Add category icons
+//                newCat.put("icon", enrichImages(masterCat.get("icon")));
+//
+//                // ✅ Subcategories
+//                List<Map<String, Object>> subs =
+//                        (List<Map<String, Object>>) sc.getOrDefault("subCategories", new ArrayList<>());
+//
+//                List<Map<String, Object>> enrichedSubs = new ArrayList<>();
+//
+//                for (Map<String, Object> sub : subs) {
+//
+//                    String subId = sub.get("subcategoryId").toString();
+//                    Map<String, Object> masterSub = subCategoryMap.get(subId);
+//
+//                    if (masterSub == null) continue;
+//
+//                    Map<String, Object> newSub = new LinkedHashMap<>();
+//                    newSub.put("subcategoryId", subId);
+//                    newSub.put("name", masterSub.get("name"));
+//
+//                    // ✅ Add subcategory icons
+//                    newSub.put("icon", enrichImages(masterSub.get("icon")));
+//
+//                    enrichedSubs.add(newSub);
+//                }
+//
+//                newCat.put("subCategories", enrichedSubs);
+//                enrichedCategories.add(newCat);
+//            }
+//
+//            // ✅ Replace store categories
+//            store.put("categories", enrichedCategories);
+//
+//            return json(mapper, Map.of(
+//                    "data", store,
+//                    "statusCode", "N200",
+//                    "statusDesc", "Success"
+//            ));
+//        };
+//    }
+//    
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> enrichImages(Object imagesObj) {
+
+        if (!(imagesObj instanceof List<?>)) return Collections.emptyList();
+
+        List<Map<String, Object>> images = (List<Map<String, Object>>) imagesObj;
+
+        for (Map<String, Object> img : images) {
+
+            String path = (String) img.get("localPath");
+
+            // OPTION 1: Base64
+            img.put("base64", toBase64(path));
+
+            // OPTION 2 (recommended): URL
+            // img.put("url", baseUrl + path);
+        }
+
+        return images;
+    }
+//    
+    
+    
+    
+    public NktOperationHandler getCategoriesByStore() {
+        return (data, userId, repo, mapper, def) -> {
+
+            String storeId = str(data, "storeId");
+
+            if (storeId == null || storeId.isBlank()) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "storeId is required"
+                ));
+            }
+
+            Map<String, Object> store = repo
+                    .findOne("stores", "storeId", storeId)
+                    .orElse(null);
+
+            if (store == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N404",
+                        "statusDesc", "Store not found"
+                ));
+            }
+
+            List<Map<String, Object>> storeCategories =
+                    (List<Map<String, Object>>) store.getOrDefault("categories", new ArrayList<>());
+
+            if (storeCategories.isEmpty()) {
+                return json(mapper, Map.of(
+                        "data", Collections.emptyList(),
+                        "count", 0,
+                        "statusCode", "N200"
+                ));
+            }
+
+            // Fetch master categories
+            List<Map<String, Object>> allCategories =
+                    repo.findAll("categories", Map.of("status", "ACTIVE"));
+
+            Map<String, Map<String, Object>> categoryMap = allCategories.stream()
+                    .collect(Collectors.toMap(c -> c.get("categoryId").toString(), c -> c));
+
+            List<Map<String, Object>> result = new ArrayList<>();
+
+            for (Map<String, Object> sc : storeCategories) {
+
+                String catId = sc.get("categoryId").toString();
+                Map<String, Object> master = categoryMap.get(catId);
+
+                if (master == null) continue;
+
+                Map<String, Object> obj = new LinkedHashMap<>();
+                obj.put("categoryId", catId);
+                obj.put("name", master.get("name"));
+
+                // ✅ icon
+                obj.put("icon", enrichImages(master.get("icon")));
+
+                result.add(obj);
+            }
+
+            return json(mapper, Map.of(
+                    "data", result,
+                    "count", result.size(),
+                    "statusCode", "N200",
+                    "statusDesc", "Success"
+            ));
+        };
+    }
+    
+    public NktOperationHandler getSubCategories() {
+        return (data, userId, repo, mapper, def) -> {
+
+            String storeId = str(data, "storeId");
+            String categoryId = str(data, "categoryId");
+
+            if (storeId == null || categoryId == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "storeId & categoryId required"
+                ));
+            }
+
+            Map<String, Object> store = repo
+                    .findOne("stores", "storeId", storeId)
+                    .orElse(null);
+
+            if (store == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N404",
+                        "statusDesc", "Store not found"
+                ));
+            }
+
+            List<Map<String, Object>> categories =
+                    (List<Map<String, Object>>) store.get("categories");
+
+            Map<String, Object> targetCategory = categories.stream()
+                    .filter(c -> categoryId.equals(c.get("categoryId")))
+                    .findFirst()
+                    .orElse(null);
+
+            if (targetCategory == null) {
+                return json(mapper, Map.of(
+                        "data", Collections.emptyList(),
+                        "statusCode", "N200"
+                ));
+            }
+
+            List<Map<String, Object>> subCats =
+                    (List<Map<String, Object>>) targetCategory.getOrDefault("subCategories", new ArrayList<>());
+
+            // Fetch master subcategories
+            List<Map<String, Object>> allSubs =
+                    repo.findAll("sub_categories", Map.of("status", "ACTIVE"));
+
+            Map<String, Map<String, Object>> subMap = allSubs.stream()
+                    .collect(Collectors.toMap(s -> s.get("subcategoryId").toString(), s -> s));
+
+            List<Map<String, Object>> result = new ArrayList<>();
+
+            for (Map<String, Object> sc : subCats) {
+
+                String subId = sc.get("subcategoryId").toString();
+                Map<String, Object> master = subMap.get(subId);
+
+                if (master == null) continue;
+
+                Map<String, Object> obj = new LinkedHashMap<>();
+                obj.put("subcategoryId", subId);
+                obj.put("name", master.get("name"));
+
+                obj.put("icon", enrichImages(master.get("icon")));
+
+                result.add(obj);
+            }
+
+            return json(mapper, Map.of(
+                    "data", result,
+                    "count", result.size(),
+                    "statusCode", "N200",
+                    "statusDesc", "Success"
+            ));
+        };
+    }
+    
+    public NktOperationHandler getProductsBySubCategory() {
+        return (data, userId, repo, mapper, def) -> {
+
+            String storeId = str(data, "storeId");
+            String subCategoryId = str(data, "subCategoryId");
+
+            if (storeId == null || subCategoryId == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "storeId & subCategoryId required"
+                ));
+            }
+
+            Map<String, Object> filter = new LinkedHashMap<>();
+            filter.put("storeId", storeId);
+            filter.put("subCategoryId", subCategoryId);
+            filter.put("status", "ACTIVE");
+
+            List<Map<String, Object>> products =
+                    repo.findAll("stocks", filter);
+
+            // ✅ enrich product images
+            products.forEach(p -> enrichProductImage(p.get("image")));
+
+            return json(mapper, Map.of(
+                    "data", products,
+                    "count", products.size(),
+                    "statusCode", "N200",
+                    "statusDesc", "Success"
+            ));
+        };
+    }
+    
+    @SuppressWarnings("unchecked")
+    private void enrichProductImage(Object imgObj) {
+
+        if (!(imgObj instanceof Map)) return;
+
+        Map<String, Object> img = (Map<String, Object>) imgObj;
+
+        String basePath = (String) img.get("localPath");
+        List<String> filenames = (List<String>) img.get("filename");
+
+        if (basePath == null || filenames == null) return;
+
+        List<Map<String, Object>> images = new ArrayList<>();
+
+        for (String file : filenames) {
+            String fullPath = basePath + "/" + file;
+
+            Map<String, Object> obj = new LinkedHashMap<>();
+            obj.put("filename", file);
+            obj.put("base64", toBase64(fullPath)); // or URL
+
+            images.add(obj);
+        }
+
+        img.put("files", images);
     }
     
     /* ── STORES_GET_PRODUCTS ────────────────────────────────────────────── */
@@ -310,6 +695,44 @@ public class NktCatalogueHandler {
                     "totalResults", stores.size() + items.size()));
         };
     }
+    
+    /* ── Types Of Stores in the groceries ─────────────────────────────────────────── */
+    public NktOperationHandler typesOfStore() {
+        return (data, userId, repo, mapper, def) -> {
+
+            Map<String, Object> filter = new LinkedHashMap<>();
+            filter.put("status", "ACTIVE");
+
+            List<Map<String, Object>> stores = repo.findAll(def.getCollection(), filter);
+
+            // ✅ Safe empty handling
+            if (stores == null || stores.isEmpty()) {
+                return json(mapper, Map.of(
+                        "data", Collections.emptyList(),
+                        "count", 0,
+                        "statusCode", "N200",
+                        "statusDesc", "No stores found"
+                ));
+            }
+
+            // ✅ Optional limit (protect API)
+            stores = stores.stream()
+                    .limit(100)
+                    .collect(Collectors.toList());
+
+            // ✅ Optional: enrich images (if same structure as stores)
+            if ("stores".equalsIgnoreCase(def.getCollection())) {
+                stores.forEach(this::enrichStoreImages);
+            }
+
+            return json(mapper, Map.of(
+                    "data", stores,
+                    "count", stores.size(),
+                    "statusCode", "N200",
+                    "statusDesc", "Success"
+            ));
+        };
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -320,5 +743,54 @@ public class NktCatalogueHandler {
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
                   * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    
+    private String toBase64(String relativePath) {
+        try {
+            String fullPath = basePath + relativePath;
+
+            java.nio.file.Path filePath = java.nio.file.Paths.get(fullPath);
+
+            if (!java.nio.file.Files.exists(filePath)) {
+                log.warn("File not found: {}", fullPath);
+                return null;
+            }
+
+            byte[] bytes = java.nio.file.Files.readAllBytes(filePath);
+            String mime = java.nio.file.Files.probeContentType(filePath);
+
+            return "data:" + mime + ";base64," +
+                    Base64.getEncoder().encodeToString(bytes);
+
+        } catch (Exception e) {
+            log.error("Base64 conversion failed", e);
+            return null;
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    private void enrichStoreImages(Map<String, Object> store) {
+
+        // 👉 LOGO LIST
+        Object logosObj = store.get("logo");
+        if (logosObj instanceof List<?>) {
+            List<Map<String, Object>> logos = (List<Map<String, Object>>) logosObj;
+
+            for (Map<String, Object> img : logos) {
+                String path = (String) img.get("localPath");
+                img.put("base64", toBase64(path));
+            }
+        }
+
+        // 👉 BANNER LIST
+        Object bannersObj = store.get("bannerImage");
+        if (bannersObj instanceof List<?>) {
+            List<Map<String, Object>> banners = (List<Map<String, Object>>) bannersObj;
+
+            for (Map<String, Object> img : banners) {
+                String path = (String) img.get("localPath");
+                img.put("base64", toBase64(path));
+            }
+        }
     }
 }
