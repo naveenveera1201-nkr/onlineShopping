@@ -15,23 +15,24 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ProcessFlowConfigLoader {
 	
-	@Bean
-	public ProcessFlowEngine processFlowEngine() throws Exception {
-		log.info("ProcessFlowConfigLoader processflowengine called...");
-		URL processFlowOneURL = ProcessFlowConfigLoader.class.getClassLoader().getResource("process-flow.json");
-		String processFlowOnePath = Path.of(processFlowOneURL.toURI()).toString();
-
-		URL processFlowStatusOneURL = ProcessFlowConfigLoader.class.getClassLoader().getResource("process-flow-status.json");
-		String processFlowStatusOnePath = Path.of(processFlowStatusOneURL.toURI()).toString();
-
-		ProcessFlowConfig config = ProcessFlowConfig.builder()
-				.processConfigPath(processFlowOnePath)
-				.statusConfigPath(processFlowStatusOnePath)
-				.connectionString("mongodb://localhost:27017/")
-				.databaseName("invester-profile").build();
-		
-		log.info("ProcessFlowConfigLoader processflowengine ended...");
-
-		return new ProcessFlowEngine(config);
-	}
+//	@Bean
+//	public ProcessFlowEngine processFlowEngine() throws Exception {
+//		log.info("ProcessFlowConfigLoader processflowengine called...");
+//		URL processFlowOneURL = ProcessFlowConfigLoader.class.getClassLoader().getResource("process-flow.json");
+//		String processFlowOnePath = Path.of(processFlowOneURL.toURI()).toString();
+//
+//		URL processFlowStatusOneURL = ProcessFlowConfigLoader.class.getClassLoader().getResource("process-flow-status.json");
+//		String processFlowStatusOnePath = Path.of(processFlowStatusOneURL.toURI()).toString();
+//
+//		ProcessFlowConfig config = ProcessFlowConfig.builder()
+//				.processConfigPath(processFlowOnePath)
+//				.statusConfigPath(processFlowStatusOnePath)
+//				.connectionString("mongodb+srv://nammakadaitheru_db_user:Nkt_User_01@nkt-cluster.1trwdu1.mongodb.net/nktdb?retryWrites=true&w=majority&appName=nkt-cluster")
+//				.databaseName("nktdb")
+//				.build();
+//		
+//		log.info("ProcessFlowConfigLoader processflowengine ended...");
+//
+//		return new ProcessFlowEngine(config);
+//	}
 }

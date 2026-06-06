@@ -3,6 +3,9 @@ spring:
     import: classpath:config-master.yml
   application:
     name: myFirstApplication
+  mongodb:
+    uri: mongodb+srv://nammakadaitheru_db_user:Nkt_User_01@nkt-cluster.1trwdu1.mongodb.net/nktdb?retryWrites=true&w=majority&appName=nkt-cluster
+    database: nktdb
 
 server:
   port: 8060

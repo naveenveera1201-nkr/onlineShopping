@@ -75,7 +75,7 @@ public final class ProcessFlowConfig {
 
         private String processConfigPath = "";
         private String statusConfigPath = "";
-        private String connectionString = "mongodb://localhost:27017";
+        private String connectionString ="";
         private String databaseName = "processflow_db";
         private int connectionPoolSize = 50;
         private int connectionTimeoutMs = 10000;

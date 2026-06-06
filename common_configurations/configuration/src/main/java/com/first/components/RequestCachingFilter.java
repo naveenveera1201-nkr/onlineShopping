@@ -1,19 +1,20 @@
 package com.first.components;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.first.dto.ApiDefinition;
-import com.first.services.ApiLogService;
-import com.first.services.BusinessLogicExecutor;
-import com.first.services.ResponseBuilders;
-import com.first.services.SecurityService;
-import com.first.services.ValidationService;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,19 +27,21 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.first.dto.ApiDefinition;
+import com.first.services.ApiLogService;
+import com.first.services.BusinessLogicExecutor;
+import com.first.services.ResponseBuilders;
+import com.first.services.SecurityService;
+import com.first.services.ValidationService;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Production-grade NKT API Gateway Filter.
@@ -185,6 +188,8 @@ public class RequestCachingFilter extends OncePerRequestFilter {
 
         // Collect request headers
         Map<String, String> headers = readRequestHeaders(request);
+        
+        log.info("[{}] Headers: {}", correlationId, headers);
 
         // Parse body — safe fallback to empty map on blank / non-JSON body
         Map<String, Object> body = Collections.emptyMap();
@@ -392,18 +397,56 @@ public class RequestCachingFilter extends OncePerRequestFilter {
     }
 
     /** Read request headers; mask any header whose name is sensitive. */
-    private Map<String, String> readRequestHeaders(HttpServletRequest request) {
-        Map<String, String> map   = new LinkedHashMap<>();
-        Enumeration<String> names = request.getHeaderNames();
-        if (names == null) return map;
-        while (names.hasMoreElements()) {
-            String name = names.nextElement();
-            map.put(name, SENSITIVE_KEYS.contains(name.toLowerCase())
-                    ? MASKED
-                    : request.getHeader(name));
-        }
-        return map;
-    }
+//	private Map<String, String> readRequestHeaders(HttpServletRequest request) {
+//		Map<String, String> map = new LinkedHashMap<>();
+//		Enumeration<String> names = request.getHeaderNames();
+//		log.info("Headers: {}", names != null ? Collections.list(names) : "none");
+//		if (names == null)
+//			return map;
+//		
+//		while (names.hasMoreElements()) {
+//			String name = names.nextElement();
+//			map.put(name, SENSITIVE_KEYS.contains(name.toLowerCase()) ? MASKED : request.getHeader(name));
+//		}
+//		return map;
+//	}
+	
+	private Map<String, String> readRequestHeaders(HttpServletRequest request) {
+
+//	    Map<String, String> headers = new LinkedHashMap<>();
+	    Map<String, String> headers =
+	            new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
+	    if (request == null) {
+	        return headers;
+	    }
+
+	    Enumeration<String> headerNames = request.getHeaderNames();
+
+	    if (headerNames == null || !headerNames.hasMoreElements()) {
+	        log.warn("No request headers found");
+	        return headers;
+	    }
+
+	    while (headerNames.hasMoreElements()) {
+
+	        String headerName = headerNames.nextElement();
+
+	        if (headerName == null) {
+	            continue;
+	        }
+
+	        String value = SENSITIVE_KEYS.contains(headerName.toLowerCase())
+	                ? MASKED
+	                : request.getHeader(headerName);
+
+	        headers.put(headerName, value);
+	    }
+
+	    log.info("Captured Headers: {}", headers.keySet());
+
+	    return headers;
+	}
 
     private Map<String, String> readResponseHeaders(ContentCachingResponseWrapper response) {
         Map<String, String> map = new LinkedHashMap<>();

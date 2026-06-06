@@ -38,7 +38,7 @@ public class ValidationService {
                                         Map<String, String> headers) {
         Map<String, Object> validated = new HashMap<>();
         
-		validated.put("token", headers.get("Authorization"));
+		validated.put("token", headers.getOrDefault("Authorization", headers.get("authorization")));
 
         if (apiDef.getRequest() == null || apiDef.getRequest().getParameters() == null) {
             return validated;

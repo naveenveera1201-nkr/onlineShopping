@@ -2,7 +2,8 @@ spring:
   application:
     name: nktprocess
   mongodb:
-      uri: mongodb://localhost:27017/nktdb
+#      uri: mongodb://localhost:27017/nktdb
+      uri: mongodb+srv://nammakadaitheru_db_user:Nkt_User_01@nkt-cluster.1trwdu1.mongodb.net/nktdb?retryWrites=true&w=majority&appName=nkt-cluster
       database: nktdb
   servlet:
     multipart:

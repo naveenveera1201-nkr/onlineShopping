@@ -65,7 +65,7 @@ public class SecurityService {
         String headerName = auth.getHeaderName() != null ?
                 auth.getHeaderName() : "Authorization";
 
-        String token = headers.get(headerName);
+        String token = headers.get(headerName.toLowerCase());
         if (token == null || token.isEmpty()) {
             throw new SecurityException("Authentication token required");
         }

@@ -55,7 +55,7 @@ public class NktAuthHandler {
 			String userType = str(data, "userType");
 
 			String tableName = userType + def.getCollection();
-			Map<String, Object> filter = Map.of("identifier", identifier, "userType", str(data, "identifierType"),
+			Map<String, Object> filter = Map.of("identifier", identifier, "userType", userType,
 					"status", "ACTIVE");
 
 			boolean exists = repo.exists(tableName, filter);
@@ -85,7 +85,7 @@ public class NktAuthHandler {
 			repo.insert("otp_records", rec);
 
 			log.info("OTP {} generated for {}", otp, identifier); // remove in prod
-			return json(mapper, Map.of("message", "OTP sent successfully", "expiresInSeconds", 300));
+			return json(mapper, Map.of("statusCode", "N200","message", "OTP sent successfully", "expiresInSeconds", 300));
 		};
 	}
 
@@ -133,7 +133,7 @@ public class NktAuthHandler {
 //				throw new RuntimeException("Invalid OTP");
 				return json(mapper,Map.of(
             			"messsage",  "Invalid OTP",
-            			"status", "Failed"));
+            			"status", "Failed","statusCode", "N400"));
 			}
 
             repo.updateFirst("otp_records",
@@ -159,7 +159,7 @@ public class NktAuthHandler {
             } else {
 				user = repo.findOne(tableName, "identifier", identifier).orElse(null);
                
-				return json(mapper,Map.of(
+				return json(mapper,Map.of("statusCode", "N400",
             			"messsage",  "User not found",
             			"status", "Failed"));
             }
@@ -299,7 +299,7 @@ public class NktAuthHandler {
 				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "User not found"));
 			}
 
-			return json(mapper, Map.of("accessToken", accessToken, "refreshToken", refreshToken));
+			return json(mapper, Map.of("statusCode", "N200","accessToken", accessToken, "refreshToken", refreshToken));
 		};
 	}
 
@@ -320,7 +320,7 @@ public class NktAuthHandler {
     	                        "updatedAt", LocalDateTime.now().toString()
     	                ));
 
-    	        return json(mapper, Map.of("message", "Logged out successfully"));
+    	        return json(mapper, Map.of("statusCode", "N200","message", "Logged out successfully"));
     	    };
     }
 }
