@@ -158,10 +158,9 @@ public class NktAuthHandler {
 				user = repo.insert(tableName, user);
             } else {
 				user = repo.findOne(tableName, "identifier", identifier).orElse(null);
-               
-				return json(mapper,Map.of("statusCode", "N400",
-            			"messsage",  "User not found",
-            			"status", "Failed"));
+				if (user == null) {
+					return json(mapper, Map.of("statusCode", "N400", "messsage", "User not found", "status", "Failed"));
+				}
             }
 
             String uid  = user.get("id").toString();

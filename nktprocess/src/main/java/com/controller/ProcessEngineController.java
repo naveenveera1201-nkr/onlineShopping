@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.resource.WorkflowEngineResource;
+import com.resource.ProcessEngineResource;
 import com.service.NktCoreService;
 
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-public class WorkflowEngineController implements WorkflowEngineResource {
+public class ProcessEngineController implements ProcessEngineResource {
 
     private final NktCoreService nktCoreService;
     private final ObjectMapper   mapper;
@@ -34,7 +34,7 @@ public class WorkflowEngineController implements WorkflowEngineResource {
     public String process(@RequestParam("data") String data,
                           @RequestParam("code") String code) {
 
-        log.info("WorkflowEngineController.process: code={}", code);
+        log.info("ProcessEngineController.process: code={}", code);
 
         try {
             Map<String, Object> dataMap = mapper.readValue(

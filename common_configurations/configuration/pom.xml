@@ -104,11 +104,11 @@
         </dependency>
 
         <!-- Internal Dependency -->
-        <dependency>
+      <!--  <dependency>
             <groupId>com.nkt.project</groupId>
             <artifactId>workflowEngine</artifactId>
             <version>1.0-SNAPSHOT</version>
-        </dependency>
+        </dependency>-->
 
         <!-- Testing (JUnit 5 included automatically) -->
         <dependency>
@@ -124,6 +124,11 @@
 			<scope>test</scope>
 		</dependency>
 
+		<dependency>
+			<groupId>com.nkt.project</groupId>
+			<artifactId>nktprocess</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
     </dependencies>
 
 	<!-- Build -->

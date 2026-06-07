@@ -58,7 +58,7 @@ public class ApiConfigLoader {
     }
 
     private void loadFile(Resource r) {
-        log.info(" -> loading: {}", r.getFilename());
+//        log.info(" -> loading: {}", r.getFilename());
         try (InputStream is = r.getInputStream()) {
             JsonNode root     = yamlMapper.readTree(is);
             JsonNode apisNode = root.get("apis");
@@ -74,7 +74,7 @@ public class ApiConfigLoader {
                 // pre-compile path pattern
                 patternCache.put(api.getPath(), buildPattern(api.getPath()));
             }
-            log.info("    -> {} API(s) registered from {}", list.size(), r.getFilename());
+//            log.info("    -> {} API(s) registered from {}", list.size(), r.getFilename());
         } catch (Exception ex) {
             log.error("    -> failed to parse {}: {}", r.getFilename(), ex.getMessage(), ex);
         }

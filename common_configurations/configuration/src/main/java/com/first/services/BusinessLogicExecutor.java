@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.first.client.WorkFlowEngineClient;
+import com.feign.ProcessEngineClients;
 import com.first.dto.ApiDefinition;
 import com.first.dto.BusinessLogicConfig;
 import com.first.functionalInterface.ProcessFlowInterface;
@@ -30,7 +30,7 @@ public class BusinessLogicExecutor {
     private final DatabaseExecutor      databaseExecutor;
     private final ExternalApiExecutor   externalApiExecutor;
     private final CallbackExecutor      callbackExecutor;
-    private final WorkFlowEngineClient  workFlowEngineClient;
+    private final ProcessEngineClients  processEngineClient;
     private final ObjectMapper          mapper;
 
     // ── Main dispatch ─────────────────────────────────────────────────────────
@@ -64,30 +64,29 @@ public class BusinessLogicExecutor {
 
     // ── Custom-service (calls Project 2 via Feign) ────────────────────────────
 
-    private Map<String, Object> executeCustomService(BusinessLogicConfig config,
-                                                     Map<String, Object> params) {
-        try {
-            String json   = mapper.writeValueAsString(params);
-            ProcessFlowInterface call = workFlowEngineClient::process;
-            String result = call.execute(json, config.getProcessCode());
-            log.info("resposne :: {}", result);
-            return mapper.readValue(result, new TypeReference<Map<String, Object>>() {});
-        } catch (Exception e) {
-            log.error("Custom service call failed for processCode={}: {}",
-                      config.getProcessCode(), e.getMessage(), e);
+	private Map<String, Object> executeCustomService(BusinessLogicConfig config, Map<String, Object> params) {
+		try {
+			String json = mapper.writeValueAsString(params);
+			ProcessFlowInterface call = processEngineClient::process;
+			String result = call.execute(json, config.getProcessCode());
+			log.info("resposne :: {}", result);
+			return mapper.readValue(result, new TypeReference<Map<String, Object>>() {
+			});
+		} catch (Exception e) {
+			log.error("Custom service call failed for processCode={}: {}", config.getProcessCode(), e.getMessage(), e);
 //            throw new RuntimeException("Custom service execution failed: " + e.getMessage(), e);
-            String msg = e.getMessage();
+			String msg = e.getMessage();
 
-            if (msg != null && msg.contains("{\"status\"")) {
-                int start = msg.indexOf("{\"status\"");
-                int end = msg.lastIndexOf("}") + 1;
-                msg = msg.substring(start, end);
-            }
+			if (msg != null && msg.contains("{\"status\"")) {
+				int start = msg.indexOf("{\"status\"");
+				int end = msg.lastIndexOf("}") + 1;
+				msg = msg.substring(start, end);
+			}
 
-            throw new RuntimeException(msg);
-            
-        }
-    }
+			throw new RuntimeException(msg);
+
+		}
+	}
 
     // ── Callbacks ─────────────────────────────────────────────────────────────
 
