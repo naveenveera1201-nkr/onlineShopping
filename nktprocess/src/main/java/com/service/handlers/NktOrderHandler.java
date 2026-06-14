@@ -3,10 +3,14 @@ package com.service.handlers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.repository.NktDynamicRepository;
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -240,11 +244,18 @@ public class NktOrderHandler {
 
             // ✅ Create order
             String now = LocalDateTime.now().toString();
+            
+			String random = RandomStringUtils.randomNumeric(6);
+			String orderId = "ORD" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+					+ String.format("%06d", random);
 
             Map<String, Object> order = new LinkedHashMap<>();
             order.put("orderId", UUID.randomUUID().toString()); // ✅ important
+            order.put("orderRef", "#"+orderId); // ✅ human-friendly);
+            order.put("orderDate", now);
             order.put("userId", userId);
             order.put("storeId", storeId);
+            order.put("storeName", store.get("storeName"));
             order.put("address", address);
             order.put("paymentMethod", str(data, "paymentMethod"));
             order.put("appointmentSlot", str(data, "appointmentSlot"));
@@ -990,7 +1001,7 @@ public class NktOrderHandler {
         String currentStatus = order.get("status") != null
                 ? order.get("status").toString().toLowerCase()
                 : "";
-
+        
         if (!expectedStatus.equals(currentStatus)) {
             return json(mapper, Map.of(
                     "statusCode", "N400",
@@ -1040,8 +1051,10 @@ public class NktOrderHandler {
             Map<String, Object> extra = Map.of(
                     "storeNote", String.valueOf(data.getOrDefault("storeNote", ""))
             );
+            
+			String status = str(data, "partial").equalsIgnoreCase("false") ? "partially accepted" : "accepted";
 
-            return updateOrderStatus(orderId, storeId, "placed", "accepted", extra, repo, mapper);
+            return updateOrderStatus(orderId, storeId, "placed", status, extra, repo, mapper);
         };
     }
     

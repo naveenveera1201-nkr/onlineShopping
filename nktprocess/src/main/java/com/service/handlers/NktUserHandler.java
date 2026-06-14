@@ -451,6 +451,8 @@ public class NktUserHandler {
             // ✅ Final response
             Map<String, Object> dash = new LinkedHashMap<>();
             dash.put("storeId", storeId);
+            dash.put("storeName", store.get("storeName"));
+            dash.put("contact", store.get("contact"));
             dash.put("newOrders", newOrders);
             dash.put("todayOrders", todayOrders);
             dash.put("todayRevenue", todayRevenue);

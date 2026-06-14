@@ -6,6 +6,8 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -103,6 +105,10 @@ public class NktDynamicRepository {
     public long count(String collection, Map<String, Object> criteria) {
         return mongo.count(buildQuery(criteria), Document.class, collection);
     }
+    
+	public long countOf(String collection, Query query) {
+		return mongo.count(query, collection);
+	}
 
     // ─── UPDATE ──────────────────────────────────────────────────────────────
 
@@ -187,4 +193,9 @@ public class NktDynamicRepository {
         }
         return id;
     }
+
+	public AggregationResults<Document> aggregate(Aggregation aggregation, String collection) {
+
+		return mongo.aggregate(aggregation, collection, Document.class);
+	}
 }
