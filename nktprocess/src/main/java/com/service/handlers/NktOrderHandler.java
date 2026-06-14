@@ -667,6 +667,15 @@ public class NktOrderHandler {
                         "statusDesc", "Item not found or inactive"
                 ));
             }
+            
+            // ✅ Validate store
+            Map<String, Object> store = repo.findOne("stores", "storeId", stock.get("storeId")).orElse(null);
+            if (store == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N404",
+                        "statusDesc", "Store not found"
+                ));
+            }
 
             // ✅ 3. Check existing wishlist
             Optional<Map<String, Object>> existingOpt =
@@ -686,6 +695,7 @@ public class NktOrderHandler {
             wi.put("userId", userId);
             wi.put("itemId", itemId);
             wi.put("itemName", stock.get("stockName")); // ✅ FIXED
+            wi.put("StoreName", store.get("storeName")); // ✅ Added store name
             wi.put("price", stock.get("price"));
             wi.put("available", stock.get("status").equals("ACTIVE"));
             wi.put("status", "ACTIVE");
@@ -830,6 +840,7 @@ public class NktOrderHandler {
                 wi.put("stockId", stockId);
                 wi.put("stockName", stock.get("stockName"));
                 wi.put("price", stock.get("price"));
+                wi.put("storeName", store.get("storeName"));
                 wi.put("categoryId", categoryId);
                 wi.put("subCategoryId", subCategoryId);
                 wi.put("stockCount", newCount);
