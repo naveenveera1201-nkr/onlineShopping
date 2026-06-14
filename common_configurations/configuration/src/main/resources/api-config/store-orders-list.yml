@@ -2,7 +2,7 @@ apis:
   - id: store-orders-list
     name: Get All Store Orders
     version: v1
-    method: GET
+    method: POST
     path: /api/v1/store/orders
     description: Returns all orders for the store. Filterable by status for the tab-based order view (New / Active / Done).
     enabled: true
@@ -26,21 +26,21 @@ apis:
       parameters:
       - name: status
         type: String
-        location: QUERY
+        location: BODY
         required: false
         validation:
-          pattern: ^(placed|accepted|dispatched|delivered|cancelled)$
+          pattern: ^(placed|accepted|dispatched|delivered|cancelled|all)$
           errorMessage: Invalid order status filter
       - name: page
         type: Integer
-        location: QUERY
+        location: BODY
         required: false
         validation:
           min: 0
           errorMessage: Page must be 0 or greater
       - name: limit
         type: Integer
-        location: QUERY
+        location: BODY
         required: false
         validation:
           min: 1
@@ -59,6 +59,9 @@ apis:
       - name: data
         type: String
         description: response data
+      - name: count
+        type: String
+        description: response count
       - name: currentStatus
         type: String
         description: Current record status

@@ -894,7 +894,7 @@ public class NktOrderHandler {
             Map<String, Object> filter = new LinkedHashMap<>();
             filter.put("storeId", storeId);
 
-            if (status != null && !status.isBlank()) {
+			if (status != null && !status.isBlank() && !status.equalsIgnoreCase("all")) {
                 filter.put("status", status.toLowerCase());
             }
 
@@ -907,15 +907,15 @@ public class NktOrderHandler {
                     page * limit,
                     limit
             );
-
+            
             // ✅ Step 5: Response
             return json(mapper, Map.of(
                     "data", orders,
-                    "page", page,
-                    "limit", limit,
-                    "count", orders.size(),
-                    "statusCode", "N200",
-                    "statusDesc", "Success"
+//                    "page", page,
+//                    "limit", limit,
+                    "count", orders.size()
+//                    "statusCode", "N200",
+//                    "statusDesc", "Success"
             ));
         };
     }
