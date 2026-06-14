@@ -245,13 +245,15 @@ public class NktOrderHandler {
             // ✅ Create order
             String now = LocalDateTime.now().toString();
             
-			String random = RandomStringUtils.randomNumeric(6);
-			String orderId = "ORD" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-					+ String.format("%06d", random);
+            String random = RandomStringUtils.randomNumeric(6);
+
+            String orderId = "#ORD"
+                    + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                    + random;
 
             Map<String, Object> order = new LinkedHashMap<>();
             order.put("orderId", UUID.randomUUID().toString()); // ✅ important
-            order.put("orderRef", "#"+orderId); // ✅ human-friendly);
+            order.put("orderRef", orderId); // ✅ human-friendly);
             order.put("orderDate", now);
             order.put("userId", userId);
             order.put("storeId", storeId);

@@ -1,6 +1,8 @@
 package com.service.handlers;
 
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -10,10 +12,21 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.GroupOperation;
+import org.springframework.data.mongodb.core.aggregation.MatchOperation;
+import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
+import org.springframework.data.mongodb.core.aggregation.SortOperation;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.repository.NktDynamicRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -447,17 +460,27 @@ public class NktUserHandler {
                     }
                 }
             }
+            
+            long orderCount = countOrdersLast3Months(
+		            "orders",
+		            storeId,repo
+		    );
+		 
+		 Map<String, Object> summary = getLast3MonthsOrderSummary("orders", storeId,repo);
 
             // ✅ Final response
             Map<String, Object> dash = new LinkedHashMap<>();
             dash.put("storeId", storeId);
             dash.put("storeName", store.get("storeName"));
             dash.put("contact", store.get("contact"));
+            dash.put("address", store.get("location"));
             dash.put("newOrders", newOrders);
             dash.put("todayOrders", todayOrders);
             dash.put("todayRevenue", todayRevenue);
             dash.put("currentStatus",
                     Boolean.TRUE.equals(store.get("open")) ? "OPEN" : "CLOSED");
+			dash.put("orderSummaryLast3Months", summary);
+			dash.put("noOfOrders", orderCount);
 
             return json(mapper, Map.of(
                     "data", dash,
@@ -466,6 +489,62 @@ public class NktUserHandler {
             ));
         };
     }
+    
+    public long countOrdersLast3Months(String collection, String userId, NktDynamicRepository repo) {
+
+	    String threeMonthsAgo = LocalDateTime.now()
+	            .minusMonths(3)
+	            .toString();
+
+	    Query query = new Query();
+
+	    query.addCriteria(
+	        Criteria.where("storeId").is(userId)
+	                .and("createdAt").gte(threeMonthsAgo)
+	    );
+
+	    return repo.countOf(collection,query);
+	}
+
+	public Map<String, Object> getLast3MonthsOrderSummary(String collection, String userId, NktDynamicRepository repo) {
+
+		String fromDate = LocalDateTime.now().minusMonths(3).toString();
+
+		MatchOperation match = Aggregation.match(Criteria.where("storeId").is(userId).and("createdAt").gte(fromDate));
+
+		ProjectionOperation project = Aggregation.project().andExpression("substr(createdAt, 0, 7)").as("month");
+
+		GroupOperation group = Aggregation.group("month").count().as("count");
+
+		SortOperation sort = Aggregation.sort(Sort.Direction.ASC, "_id");
+
+		Aggregation aggregation = Aggregation.newAggregation(match, project, group, sort);
+
+		AggregationResults<Document> results = repo.aggregate(aggregation, collection);
+
+		List<Map<String, Object>> monthlyOrders = new ArrayList<>();
+		
+		long totalCount = 0;
+
+		for (Document doc : results.getMappedResults()) {
+
+			long count = ((Number) doc.get("count")).longValue();
+			
+			String monthKey = doc.getString("_id"); // 2026-06
+
+			YearMonth ym = YearMonth.parse(monthKey);
+
+			String formattedMonth = ym.format(
+			        DateTimeFormatter.ofPattern("MMM-yyyy")
+			);
+
+			monthlyOrders.add(Map.of("month", formattedMonth, "count", count));
+
+			totalCount += count;
+		}
+
+		return Map.of("userId", userId, "last3MonthsOrderCount", totalCount, "monthlyOrders", monthlyOrders);
+	}
 
     /* ── NOTIFICATION_REGISTER_DEVICE ──────────────────────────────────── */
     public NktOperationHandler registerDevice() {
