@@ -1,17 +1,17 @@
 apis:
-  - id: wishlist-add
-    name: Add Item to Wishlist
+  - id: auth-user-delete
+    name: Logout / Revoke Token
     version: v1
-    method: POST
-    path: /api/v1/customer/wishlist/{itemId}
-    description: Adds an item to the customer's wishlist. Idempotent — no error if item already saved.
+    method: GET
+    path: /api/v1/auth/deleteuser
+    description: delete the user account in the application.
     enabled: true
     security:
       authentication:
-        enabled: true
+        enabled: false
         type: JWT
         roles:
-        - customer
+        - CUSTOMER
       authorization:
         enabled: true
       rateLimit:
@@ -24,30 +24,28 @@ apis:
     request:
       contentType: application/json
       parameters:
-      - name: itemId
+      - name: reason
         type: String
-        location: PATH
+        location: BODY
         required: true
+        sensitive: true
         validation:
           minLength: 1
-          errorMessage: Item ID is required
+          errorMessage: reason is required
+      - name: remarks
+        type: String
+        location: BODY
+        required: false
+        validation:
+          minLength: 1
+          errorMessage: reason is required
     response:
       successCode: 200
       contentType: application/json
       fields:
-      - name: id
-        type: Long
-        description: Generated WishlistItem ID
-      - name: history
-        type: String
-        description: history
       - name: data
         type: String
-        description: registered data
-      - name: currentStatus
-        type: String
-        description: Record status
-        defaultValue: ACTIVE
+        description: response details
       - name: createdAt
         type: LocalDateTime
         description: Creation timestamp
@@ -56,16 +54,17 @@ apis:
         description: created by
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: nkt.wishlist.add
+      processCode: nkt.auth.deleteuser
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:
       - type: INSERT
-        entity: WishlistItem
+        entity: Session
         mapping:
+          refreshToken: "#{encrypted(request.refreshToken)}"
           createdAt: "#{now()}"
           status: ACTIVE
     callbacks:
     - event: SUCCESS
       type: WEBHOOK
-      url: "https://api.nammakadaitheru.in/webhooks/wishlistitem-event"
+      url: "https://api.nammakadaitheru.in/webhooks/session-event"

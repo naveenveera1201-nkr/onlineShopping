@@ -29,7 +29,7 @@ apis:
         location: BODY
         required: false
         validation:
-          pattern: ^(placed|accepted|dispatched|delivered|cancelled|all)$
+          pattern: ^(placed|partially accepted|accepted|dispatched|delivered|cancelled|all)$
           errorMessage: Invalid order status filter
       - name: page
         type: Integer

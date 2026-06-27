@@ -195,6 +195,7 @@ public class NktAuthHandler {
 		tokenDoc.put("accessExpiry", LocalDateTime.now().plusSeconds(900).toString());
 		tokenDoc.put("refreshExpiry", LocalDateTime.now().plusDays(7).toString());
 		tokenDoc.put("isValid", true);
+		tokenDoc.put("isDelete", false);
 		tokenDoc.put("isLoggedOut", false);
 		tokenDoc.put("createdAt", LocalDateTime.now().toString());
 		tokenDoc.put("updatedAt", LocalDateTime.now().toString());
@@ -322,4 +323,45 @@ public class NktAuthHandler {
     	        return json(mapper, Map.of("statusCode", "N200","message", "Logged out successfully"));
     	    };
     }
+    
+    /* ── DELETE USER ────────────────────────────────────────────────────── */
+	public NktOperationHandler deleteUser() {
+
+		return (data, userId, repo, mapper, def) -> {
+
+			log.info("Deleting user with ID: {}", userId);
+
+			// ✅ Validate user
+			Map<String, Object> user = repo.findById(def.getCollection(), userId).orElse(null);
+			
+			if (user == null) {
+				return json(mapper, Map.of("statusCode", "N404", "statusDesc", "User not found"));
+			}
+			
+			if (user != null && "DELETED".equals(user.get("status"))) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "User already deleted"));
+			}
+			
+//			repo.deleteById(def.getCollection(), userId);
+			
+			repo.deleteAll("auth_tokens", Map.of("userId", userId));
+			
+			repo.deleteAll("wishlist", Map.of("userId", userId));
+			
+
+			// Soft delete user
+//			
+//			repo.updateFirst("auth_tokens", Map.of("userId", userId), Map.of("isValid", false, "isLoggedOut", true,
+//					"isDelete", true, "updatedAt", LocalDateTime.now().toString()));
+//
+			repo.updateFirst(def.getCollection(), Map.of("_id", userId),
+					Map.of("isDeleted", true, "status", "DELETED", "updatedAt", LocalDateTime.now().toString(),"reason", str(data, "reason"),"remarks", str(data, "remarks")));
+//			
+//			repo.updateFirst("wishlist", Map.of("userId", userId), Map.of("isDeleted", true, "status", "DELETED", "updatedAt", LocalDateTime.now().toString()));
+			
+			log.info("Completed Deleting user with ID: {}", userId);
+
+			return json(mapper, Map.of("statusCode", "N200", "message", "user account deleted successfully"));
+		};
+	}
 }

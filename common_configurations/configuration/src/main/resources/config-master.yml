@@ -8,6 +8,7 @@ spring:
       - classpath:api-config/auth-biometric-enrol.yml
       - classpath:api-config/auth-biometric-verify.yml
       - classpath:api-config/auth-logout.yml
+      - classpath:api-config/auth-user-delete.yml
       - classpath:api-config/customer-get-profile.yml
       - classpath:api-config/customer-update-profile.yml
       - classpath:api-config/customer-add-address.yml

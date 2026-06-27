@@ -98,6 +98,7 @@ public class NktCoreService {
         handlers.put("AUTH_ENROL_BIOMETRIC",   authHandler.enrolBiometric());
         handlers.put("AUTH_VERIFY_BIOMETRIC",  authHandler.verifyBiometric());
         handlers.put("AUTH_LOGOUT",            authHandler.logout());
+        handlers.put("AUTH_DELETE_USER",       authHandler.deleteUser());
 
         // User / Customer / StoreProfile / Notification
         handlers.put("CUSTOMER_ADD_ADDRESS",    userHandler.addAddress());

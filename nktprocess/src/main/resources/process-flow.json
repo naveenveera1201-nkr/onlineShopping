@@ -69,6 +69,14 @@
 			"RequiredFields": []
 		},
 		{
+			"Code": "nkt.auth.deleteuser",
+			"Collection": "customerusers",
+			"Operation": "CUSTOM",
+			"HandlerKey": "AUTH_DELETE_USER",
+			"Protected": true,
+			"RequiredFields": ["reason"]
+		},
+		{
 			"Code": "nkt.customer.get_profile",
 			"Collection": "users",
 			"Operation": "FIND_BY_USER_ID",

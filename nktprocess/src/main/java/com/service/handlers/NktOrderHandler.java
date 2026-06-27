@@ -657,7 +657,7 @@ public class NktOrderHandler {
             }
 
             // ✅ 2. Validate stock item (ACTIVE only)
-            Map<String, Object> stock = repo.findOne("stocks", "id", itemId)
+            Map<String, Object> stock = repo.findOne("stocks", "stockId", itemId)
 //                    Map.of("_id", itemId, "status", "ACTIVE"))
                     .orElse(null);
 
@@ -676,15 +676,19 @@ public class NktOrderHandler {
                         "statusDesc", "Store not found"
                 ));
             }
-
+            
+            Map<String, Object> existingOpt = repo.findOneByCriteria("wishlist",
+            		 Map.of("userId", userId, "itemId", itemId, "status", "ACTIVE"))
+                    .orElse(null);
+            
             // ✅ 3. Check existing wishlist
-            Optional<Map<String, Object>> existingOpt =
-                    repo.findOneByCriteria("wishlist",
-                            Map.of("userId", userId, "itemId", itemId, "status", "ACTIVE"));
+//            Optional<Map<String, Object>> existingOpt =
+//                    repo.findOneByCriteria("wishlist",
+//                            Map.of("userId", userId, "stockId", itemId, "status", "ACTIVE"));
 
-            if (existingOpt.isPresent()) {
+            if (!(existingOpt== null)) {
                 return json(mapper, Map.of(
-                        "data", existingOpt.get(),
+                        "data", existingOpt,
                         "statusCode", "N200",
                         "statusDesc", "Already in wishlist"
                 ));
