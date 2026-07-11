@@ -219,7 +219,7 @@
 			},
 			"RequiredFields": [
 				"storeId",
-				"subCategoryId"
+				"categoryId"
 			]
 		},
 		{

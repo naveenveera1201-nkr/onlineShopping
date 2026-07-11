@@ -34,6 +34,13 @@ apis:
       - name: subCategoryId
         type: String
         location: BODY
+        required: false
+        validation:
+          minLength: 1
+          errorMessage: subCategoryId  is required
+      - name: categoryId
+        type: String
+        location: BODY
         required: true
         validation:
           minLength: 1

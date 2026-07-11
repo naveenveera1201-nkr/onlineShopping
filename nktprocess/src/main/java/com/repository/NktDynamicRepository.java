@@ -152,12 +152,78 @@ public class NktDynamicRepository {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
+//    private Query buildQuery(Map<String, Object> criteria) {
+//        if (criteria == null || criteria.isEmpty()) return new Query();
+//        Criteria c = new Criteria();
+//        List<Criteria> parts = new ArrayList<>();
+//        criteria.forEach((field, value) -> parts.add(Criteria.where(field).is(value)));
+//        return Query.query(c.andOperator(parts.toArray(new Criteria[0])));
+//    }
+    
+    @SuppressWarnings("unchecked")
     private Query buildQuery(Map<String, Object> criteria) {
-        if (criteria == null || criteria.isEmpty()) return new Query();
-        Criteria c = new Criteria();
+
+        if (criteria == null || criteria.isEmpty()) {
+            return new Query();
+        }
+
         List<Criteria> parts = new ArrayList<>();
-        criteria.forEach((field, value) -> parts.add(Criteria.where(field).is(value)));
-        return Query.query(c.andOperator(parts.toArray(new Criteria[0])));
+
+        criteria.forEach((field, value) -> {
+
+            Criteria c = Criteria.where(field);
+
+            if (value instanceof Map<?, ?> operatorMap) {
+
+                if (operatorMap.containsKey("$in")) {
+
+                    c.in((Collection<?>) operatorMap.get("$in"));
+
+                } else if (operatorMap.containsKey("$nin")) {
+
+                    c.nin((Collection<?>) operatorMap.get("$nin"));
+
+                } else if (operatorMap.containsKey("$gt")) {
+
+                    c.gt(operatorMap.get("$gt"));
+
+                } else if (operatorMap.containsKey("$gte")) {
+
+                    c.gte(operatorMap.get("$gte"));
+
+                } else if (operatorMap.containsKey("$lt")) {
+
+                    c.lt(operatorMap.get("$lt"));
+
+                } else if (operatorMap.containsKey("$lte")) {
+
+                    c.lte(operatorMap.get("$lte"));
+
+                } else if (operatorMap.containsKey("$ne")) {
+
+                    c.ne(operatorMap.get("$ne"));
+
+                } else if (operatorMap.containsKey("$regex")) {
+
+                    c.regex(operatorMap.get("$regex").toString(), "i");
+
+                } else {
+
+                    c.is(value);
+                }
+
+            } else {
+
+                c.is(value);
+            }
+
+            parts.add(c);
+
+        });
+
+        return new Query().addCriteria(
+                new Criteria().andOperator(parts.toArray(new Criteria[0]))
+        );
     }
 
     private Update buildUpdate(Map<String, Object> fields) {

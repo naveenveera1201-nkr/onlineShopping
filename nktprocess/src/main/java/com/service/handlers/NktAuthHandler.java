@@ -29,6 +29,9 @@ public class NktAuthHandler {
 	
     @Value("${otp.expiration}")
     private String otpExpiration;
+    
+    @Value("${otp.dummy}")
+    private String dummy;
 
     private final JwtTokenProvider jwt;
 
@@ -97,7 +100,6 @@ public class NktAuthHandler {
             String purpose    = str(data, "purpose");
             String userType   =  str(data, "userType");
             
-
 			Map<String, Object> rec = repo.findOneByCriteria("otp_records",
 					Map.of("identifier", identifier, "used", false, "userType", userType)).orElse(null);
 
@@ -114,26 +116,35 @@ public class NktAuthHandler {
 
 			LocalDateTime expiryTime = createdAt.plusMinutes(otpExpiration != null ? Long.parseLong(otpExpiration) : 3);
 
-			if (LocalDateTime.now().isAfter(expiryTime)) {
+			if (!dummy.equals("Y")) {
+				
+				if (LocalDateTime.now().isAfter(expiryTime)) {
+					
+					// mark as used/expired (optional but recommended)
+					repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false), Map.of("used", true));
+					
+					return json(mapper, Map.of("statusCode", "N400", "statusDesc", "OTP expired"));
+				}
+				
+				if (!otp.equals(rec.get("otp"))) {
 
-				// mark as used/expired (optional but recommended)
-				repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false), Map.of("used", true));
+					int attempts = (int) rec.get("attempts") + 1;
 
-				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "OTP expired"));
-			}
-            
-			if (!otp.equals(rec.get("otp"))) {
-				
-				int attempts = (int) rec.get("attempts") + 1;
-				
-				repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false),
-						Map.of("attempts", attempts));
-				
+					repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false),
+							Map.of("attempts", attempts));
+
 //				return json(mapper, Map.of("status", "Failed", "message", "Invalid OTP"));
 //				throw new RuntimeException("Invalid OTP");
-				return json(mapper,Map.of(
-            			"messsage",  "Invalid OTP",
-            			"status", "Failed","statusCode", "N400"));
+					return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
+				}
+
+			} else {
+				if (otp.equals(identifier.substring(Math.max(0, identifier.length() - 4)))) {
+					log.info("OTP {} verified for {}", otp, identifier);
+				} else {
+					return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
+
+				}
 			}
 
             repo.updateFirst("otp_records",

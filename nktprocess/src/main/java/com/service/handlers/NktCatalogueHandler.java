@@ -146,7 +146,8 @@ public class NktCatalogueHandler {
 
 						    Map<String, Object> newImg = new LinkedHashMap<>();
 						    newImg.put("filename", img.get("filename"));
-						    newImg.put("base64", toBase64(img.get("localPath").toString()));
+//						    newImg.put("base64", toBase64(img.get("localPath").toString()));
+						    newImg.put("url", img.get("localPath"));
 
 						    result.put("logo", List.of(newImg));
 						}
@@ -158,7 +159,8 @@ public class NktCatalogueHandler {
 
 						    Map<String, Object> newImg = new LinkedHashMap<>();
 						    newImg.put("filename", img.get("filename"));
-						    newImg.put("base64", toBase64(img.get("localPath").toString()));
+//						    newImg.put("base64", toBase64(img.get("localPath").toString()));
+						    newImg.put("url", img.get("localPath"));
 
 						    result.put("bannerImage", List.of(newImg));
 						}
@@ -465,28 +467,83 @@ public class NktCatalogueHandler {
         };
     }
     
+    @SuppressWarnings("unchecked")
     public NktOperationHandler getProductsBySubCategory() {
+
         return (data, userId, repo, mapper, def) -> {
 
             String storeId = str(data, "storeId");
+            String categoryId = str(data, "categoryId");
             String subCategoryId = str(data, "subCategoryId");
 
-            if (storeId == null || subCategoryId == null) {
+            if (storeId == null || categoryId == null) {
                 return json(mapper, Map.of(
                         "statusCode", "N400",
-                        "statusDesc", "storeId & subCategoryId required"
+                        "statusDesc", "storeId & categoryId required"
                 ));
             }
 
             Map<String, Object> filter = new LinkedHashMap<>();
             filter.put("storeId", storeId);
-            filter.put("subCategoryId", subCategoryId);
             filter.put("status", "ACTIVE");
 
-            List<Map<String, Object>> products =
-                    repo.findAll("stocks", filter);
+            // If subCategoryId is provided, no need to read store document
+            if (subCategoryId != null && !subCategoryId.isBlank()) {
 
-            // ✅ enrich product images
+                filter.put("subCategoryId", subCategoryId);
+
+            } else {
+
+                Map<String, Object> store = repo.findOne("stores", "storeId", storeId)
+                        .orElse(null);
+
+                if (store == null) {
+                    return json(mapper, Map.of(
+                            "statusCode", "N404",
+                            "statusDesc", "Store not found"
+                    ));
+                }
+
+                List<Map<String, Object>> categories =
+                        (List<Map<String, Object>>) store.getOrDefault(
+                                "categories",
+                                Collections.emptyList());
+
+                Map<String, Object> category = categories.stream()
+                        .filter(c -> categoryId.equals(c.get("categoryId")))
+                        .findFirst()
+                        .orElse(null);
+
+                if (category == null) {
+                    return json(mapper, Map.of(
+                            "statusCode", "N404",
+                            "statusDesc", "Category not found"
+                    ));
+                }
+
+                List<Map<String, Object>> subCategories =
+                        (List<Map<String, Object>>) category.getOrDefault(
+                                "subCategories",
+                                Collections.emptyList());
+
+                List<String> subCategoryIds = subCategories.stream()
+                        .map(sc -> String.valueOf(sc.get("subcategoryId")))
+                        .toList();
+
+                if (subCategoryIds.isEmpty()) {
+                    return json(mapper, Map.of(
+                            "data", Collections.emptyList(),
+                            "count", 0,
+                            "statusCode", "N200",
+                            "statusDesc", "No Products"
+                    ));
+                }
+
+                filter.put("subCategoryId", Map.of("$in", subCategoryIds));
+            }
+
+            List<Map<String, Object>> products = repo.findAll("stocks", filter);
+
             products.forEach(p -> enrichProductImage(p.get("image")));
 
             return json(mapper, Map.of(

@@ -268,8 +268,8 @@ public class NktOrderHandler {
             order.put("totalAmount", total);
 
             // ✅ status
-            order.put("status", "PLACED");
-            order.put("currentStatus", "PLACED");
+            order.put("status", "placed");
+            order.put("currentStatus", "placed");
 
             // ✅ audit
             order.put("createdAt", now);
@@ -277,7 +277,7 @@ public class NktOrderHandler {
 
             // ✅ timeline
             order.put("statusTimeline", List.of(
-                    Map.of("status", "PLACED", "at", now)
+                    Map.of("status", "placed", "at", now)
             ));
 
             Map<String, Object> savedOrder = repo.insert("orders", order);
@@ -1069,7 +1069,7 @@ public class NktOrderHandler {
                     "storeNote", String.valueOf(data.getOrDefault("storeNote", ""))
             );
             
-			String status = str(data, "partial").equalsIgnoreCase("false") ? "partially accepted" : "accepted";
+			String status = str(data, "partial").equalsIgnoreCase("true") ? "partially accepted" : "accepted";
 
             return updateOrderStatus(orderId, storeId, "placed", status, extra, repo, mapper);
         };
@@ -1102,8 +1102,16 @@ public class NktOrderHandler {
             );
 
             Map<String, Object> extra = Map.of("deliveryAgent", agent);
-
-            return updateOrderStatus(orderId, storeId, "accepted", "dispatched", extra, repo, mapper);
+            
+            Map<String, Object> order = getStoreOrder(orderId, storeId, repo);
+            
+            String currentStatus = order.get("status") != null
+                    ? order.get("status").toString().toLowerCase()
+                    : "";
+            
+			return updateOrderStatus(orderId, storeId,
+					currentStatus.equals("accepted") ? "accepted" : "partially accepted", "dispatched", extra, repo,
+					mapper);
         };
     }
     
