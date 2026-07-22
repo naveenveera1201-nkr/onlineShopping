@@ -1,0 +1,78 @@
+apis:
+  - id: stores-get-subcategories
+    name: search category central maintenance
+    version: v1
+    method: GET
+    path: /api/v1/central/subcategory/search
+    description: get the product sub category in the central master maintenance
+    enabled: true
+
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+          - business
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 30
+        requestsPerHour: 500
+      encryption:
+        enabled: true
+        algorithm: AES256
+
+    request:
+      contentType: application/json
+
+      parameters:
+        - name: searchText
+          type: String
+          location: BODY
+          required: false
+          validation:
+            minLength: 1
+            errorMessage: name is required
+        - name: categoryId
+          type: String
+          location: BODY
+          required: false
+          validation:
+            minLength: 1
+            errorMessage: name is required
+    response:
+      successCode: 200
+      contentType: application/json
+
+      fields:
+        - name: id
+          type: Long
+          description: Product identifier
+
+        - name: history
+          type: String
+          description: History
+
+        - name: data
+          type: Object
+          description: Response data
+
+        - name: currentStatus
+          type: String
+          description: Current record status
+          defaultValue: ACTIVE
+
+        - name: fetchedAt
+          type: LocalDateTime
+          description: Data retrieval timestamp
+
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: nkt.get.subcategory
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+
+      operations:
+        - type: INSERT
+          entity: Category

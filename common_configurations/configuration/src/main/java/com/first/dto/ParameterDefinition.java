@@ -1,5 +1,7 @@
 package com.first.dto;
 
+import java.util.List;
+
 public class ParameterDefinition {
     private String name;
     private String type;
@@ -8,6 +10,8 @@ public class ParameterDefinition {
     private boolean sensitive;
     private Object defaultValue;
     private ValidationConfig validation;
+    private List<ParameterDefinition> fields;
+
 
     public static class ValidationConfig {
         private Integer minLength;
@@ -69,4 +73,12 @@ public class ParameterDefinition {
 
     public ValidationConfig getValidation() { return validation; }
     public void setValidation(ValidationConfig validation) { this.validation = validation; }
+
+    public List<ParameterDefinition> getFields() {
+        return fields;
+    }
+
+    public void setFields(List<ParameterDefinition> fields) {
+        this.fields = fields;
+    }
 }

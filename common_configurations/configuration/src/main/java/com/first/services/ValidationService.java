@@ -1,20 +1,23 @@
 package com.first.services;
 
-import com.first.components.CustomValidationRules;
-import com.first.dto.ApiDefinition;
-import com.first.dto.ParameterDefinition;
-import com.first.exception.ValidationException;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+
+import org.springframework.stereotype.Service;
+
+import com.first.components.CustomValidationRules;
+import com.first.dto.ApiDefinition;
+import com.first.dto.ParameterDefinition;
+import com.first.exception.ValidationException;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Validates incoming request parameters against the rules defined in the
@@ -123,6 +126,10 @@ public class ValidationService {
 
         if (isNumericType(param.getType()))
             validateNumeric(param, value, v, errorMsg);
+        
+        if (isObjectType(param.getType())) {
+            validateObject(param, value);
+        }
 
         if (v.getPattern() != null && !Pattern.matches(v.getPattern(), str))
             throw new ValidationException(errorMsg);
@@ -150,6 +157,27 @@ public class ValidationService {
             throw new ValidationException("Invalid numeric value for " + param.getName());
         }
     }
+    
+    private void validateObject(ParameterDefinition param, Object value) {
+
+        if (!(value instanceof Map<?, ?>)) {
+            throw new ValidationException(param.getName() + " must be a JSON object");
+        }
+
+		Map<String, Object> object = (Map<String, Object>) value;
+
+        if (param.getFields() == null) {
+            return;
+        }
+
+        for (ParameterDefinition child : param.getFields()) {
+
+            Object childValue = object.get(child.getName());
+
+            validateParameter(child, childValue);
+
+        }
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Type conversion
@@ -167,6 +195,12 @@ public class ValidationService {
                 case "Boolean"    -> Boolean.parseBoolean(value.toString());
                 case "LocalDate"  -> LocalDate.parse(value.toString());
                 case "Array"  -> value;
+                case "Object"      -> {
+                    if (!(value instanceof Map)) {
+                        throw new ValidationException("Expected JSON Object");
+                    }
+                    yield value;
+                }
                 default           -> value.toString();
             };
         } catch (Exception e) {
@@ -178,5 +212,13 @@ public class ValidationService {
     private boolean isNumericType(String type) {
         return "Integer".equals(type) || "Long".equals(type) || "Double".equals(type)
             || "BigDecimal".equals(type) || "Float".equals(type);
+    }
+    
+    private boolean isObjectType(String type) {
+        return "Object".equals(type);
+    }
+
+    private boolean isArrayType(String type) {
+        return "Array".equals(type);
     }
 }

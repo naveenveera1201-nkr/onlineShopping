@@ -127,6 +127,24 @@ public class NktCoreService {
 		handlers.put("STORES_CATEGORIES", catalogueHandler.getCategoriesByStore());
 		handlers.put("STORES_SUBCATEGORIES", catalogueHandler.getSubCategories());
 		handlers.put("STORES_CATEGORIES_PRODUCTS", catalogueHandler.getProductsBySubCategory());
+		handlers.put("STORE_ADD_CATEGORY", catalogueHandler.addCategory());
+		handlers.put("STORE_UPDATE_CATEGORY", catalogueHandler.updateCategory());
+		handlers.put("STORE_GET_CATEGORY", catalogueHandler.getCategories());
+		handlers.put("STORE_ADD_SUBCATEGORY", catalogueHandler.addSubCategory());
+		handlers.put("STORE_UPDATE_SUBCATEGORY", catalogueHandler.updateSubCategory());
+		handlers.put("STORE_GET_SUBCATEGORY", catalogueHandler.searchSubCategories());
+		handlers.put("STORE_ADD_PRODUCTS", catalogueHandler.addProduct());
+		handlers.put("STORE_UPDATE_PRODUCTS", catalogueHandler.updateProduct());
+		handlers.put("STORE_GET_PRODUCTS", catalogueHandler.getProducts());
+		handlers.put("STORE_ADD_BRAND", catalogueHandler.addBrand());
+		handlers.put("STORE_UPDATE_BRAND", catalogueHandler.updateBrand());
+		handlers.put("STORE_GET_BRAND", catalogueHandler.getBrands());
+		handlers.put("STORE_ADD_QUANTITY", catalogueHandler.addQuantity());
+		handlers.put("STORE_UPDATE_QUANTITY", catalogueHandler.updateQuantity());
+		handlers.put("STORE_GET_QUANTITY", catalogueHandler.getQuantities());
+		handlers.put("STORE_ADD_INVENTORY", catalogueHandler.addStoreInventory());
+		handlers.put("STORE_UPDATE_INVENTORY", catalogueHandler.updateStoreInventory());
+		handlers.put("STORE_GET_INVENTORY", catalogueHandler.getStoreInventory());
 
         // Orders / Wishlist / StoreOrders
         handlers.put("ORDER_VALIDATE_CART", orderHandler.validateCart());

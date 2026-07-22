@@ -107,6 +107,9 @@ public class NktProcessDefinition {
 	/** {@code ASC} or {@code DESC} (default {@code DESC}). */
 	@JsonProperty("SortDirection")
 	private String sortDirection;
+	
+	@JsonProperty("subCollection")
+	private List<Map<String, String>> subCollection;
 
 	// ── Convenience helpers ───────────────────────────────────────────────────
 

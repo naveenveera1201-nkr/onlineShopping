@@ -62,3 +62,21 @@ spring:
       - classpath:api-config/stores-get-subcategory.yml
       - classpath:api-config/stores-get-subcategory-product.yml
       - classpath:api-config/wishlist-toggle.yml
+      - classpath:api-config/store-add-categories.yml
+      - classpath:api-config/store-update-categories.yml
+      - classpath:api-config/store-get-categories.yml
+      - classpath:api-config/store-add-subcategories.yml
+      - classpath:api-config/store-update-subcategories.yml
+      - classpath:api-config/store-get-subcategories.yml
+      - classpath:api-config/store-add-products.yml
+      - classpath:api-config/store-update-products.yml
+      - classpath:api-config/store-get-products.yml
+      - classpath:api-config/store-add-brands.yml
+      - classpath:api-config/store-update-brands.yml
+      - classpath:api-config/store-get-brands.yml
+      - classpath:api-config/store-add-quantity.yml
+      - classpath:api-config/store-update-quantity.yml
+      - classpath:api-config/store-get-quantity.yml
+      - classpath:api-config/store-add-inventories.yml
+      - classpath:api-config/store-update-inventories.yml
+      - classpath:api-config/store-get-inventories.yml

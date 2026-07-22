@@ -1,0 +1,169 @@
+apis:
+  - id: stores-add-inventory
+    name: Add inventory central maintenance
+    version: v1
+    method: POST
+    path: /api/v1/central/inventory/add
+    description: Add the product in the central master maintenance
+    enabled: true
+
+    security:
+      authentication:
+        enabled: true
+        type: JWT
+        roles:
+          - business
+      authorization:
+        enabled: true
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 30
+        requestsPerHour: 500
+      encryption:
+        enabled: true
+        algorithm: AES256
+
+    request:
+      contentType: application/json
+
+      parameters:
+        - name: storeId
+          type: String
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: storeId is required
+        - name: stockName
+          type: String
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: stockName is required
+        - name: categoryId
+          type: String
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: categoryId is required
+        - name: subCategoryId
+          type: String
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: subCategoryId is required
+        - name: productId
+          type: String
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: productId is required
+        - name: brandId
+          type: String
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: brandId is required
+        - name: quantityId
+          type: String
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: quantityId is required
+        - name: sellingPrice
+          type: BigDecimal
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: sellingPrice is required
+        - name: offerPrice
+          type: BigDecimal
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: offerPrice is required
+        - name: availableStock
+          type: Integer
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: availableStock is required
+        - name: reservedStock
+          type: Integer
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: reservedStock is required
+        - name: minimumStock
+          type: Integer
+          location: BODY
+          required: true
+          validation:
+            minLength: 1
+            errorMessage: minimumStock is required
+#        - name: name
+#          type: Object
+#          location: BODY
+#          required: true
+#          validation:
+#            minLength: 1
+#            errorMessage: name is required
+#          fields:
+#            - name: en
+#              type: String
+#              required: true
+#              validation:
+#                minLength: 1
+#                errorMessage: English name is required
+#
+#            - name: ta
+#              type: String
+#              required: true
+#              validation:
+#                minLength: 1
+#                errorMessage: Tamil name is required
+    response:
+      successCode: 200
+      contentType: application/json
+
+      fields:
+        - name: id
+          type: Long
+          description: Product identifier
+
+        - name: history
+          type: String
+          description: History
+
+        - name: data
+          type: Object
+          description: Response data
+
+        - name: currentStatus
+          type: String
+          description: Current record status
+          defaultValue: ACTIVE
+
+        - name: fetchedAt
+          type: LocalDateTime
+          description: Data retrieval timestamp
+
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: nkt.add.inventory
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+
+      operations:
+        - type: INSERT
+          entity: Category

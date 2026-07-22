@@ -74,7 +74,9 @@
 			"Operation": "CUSTOM",
 			"HandlerKey": "AUTH_DELETE_USER",
 			"Protected": true,
-			"RequiredFields": ["reason"]
+			"RequiredFields": [
+				"reason"
+			]
 		},
 		{
 			"Code": "nkt.customer.get_profile",
@@ -619,6 +621,340 @@
 				"orderId"
 			],
 			"UserIdField": "customerId"
+		},
+		{
+			"Code": "nkt.add.category",
+			"Collection": "sections",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_ADD_CATEGORY",
+			"Protected": true,
+			"RequiredFields": [
+				"name",
+				"typeOfStore"
+			]
+		},
+		{
+			"Code": "nkt.add.subcategory",
+			"Collection": "subsections",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_ADD_SUBCATEGORY",
+			"Protected": true,
+			"subCollection": [
+				{
+					"subCollectionname": "sections",
+					"subCollectionField": "categoryId"
+				}
+			],
+			"RequiredFields": [
+				"categoryId",
+				"name"
+			]
+		},
+		{
+			"Code": "nkt.add.products",
+			"Collection": "products",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_ADD_PRODUCTS",
+			"Protected": true,
+			"subCollection": [
+				{
+					"subCollectionname": "sections",
+					"subCollectionField": "categoryId"
+				},
+				{
+					"subCollectionname": "subsections",
+					"subCollectionField": "subCategoryId"
+				}
+			],
+			"RequiredFields": [
+				"categoryId",
+				"subCategoryId",
+				"name"
+			]
+		},
+		{
+			"Code": "nkt.update.category",
+			"Collection": "sections",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_UPDATE_CATEGORY",
+			"Protected": true,
+			"RequiredFields": [
+				"id",
+				"name",
+				"typeOfStore"
+			]
+		},
+		{
+			"Code": "nkt.update.subcategory",
+			"Collection": "subsections",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_UPDATE_SUBCATEGORY",
+			"Protected": true,
+			"subCollection": [
+				{
+					"subCollectionname": "sections",
+					"subCollectionField": "categoryId"
+				}
+			],
+			"RequiredFields": [
+				"categoryId",
+				"name",
+				"id"
+			]
+		},
+		{
+			"Code": "nkt.update.products",
+			"Collection": "products",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_UPDATE_PRODUCTS",
+			"Protected": true,
+			"subCollection": [
+				{
+					"subCollectionname": "sections",
+					"subCollectionField": "categoryId"
+				},
+				{
+					"subCollectionname": "subsections",
+					"subCollectionField": "subCategoryId"
+				}
+			],
+			"RequiredFields": [
+				"categoryId",
+				"subCategoryId",
+				"name",
+				"id"
+			]
+		},
+		{
+			"Code": "nkt.get.category",
+			"Collection": "sections",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_GET_CATEGORY",
+			"Protected": true
+		},
+		{
+			"Code": "nkt.get.subcategory",
+			"Collection": "subsections",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_GET_SUBCATEGORY",
+			"Protected": true
+		},
+		{
+			"Code": "nkt.get.products",
+			"Collection": "products",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_GET_PRODUCTS",
+			"Protected": true
+		},
+		{
+			"Code": "nkt.add.brand",
+			"Collection": "brand",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_ADD_BRAND",
+			"Protected": true,
+			"subCollection": [
+				{
+					"subCollectionname": "products",
+					"subCollectionField": "productId"
+				}
+			],
+			"RequiredFields": [
+				"productId",
+				"name"
+			]
+		},
+		{
+			"Code": "nkt.update.brand",
+			"Collection": "brand",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_UPDATE_BRAND",
+			"Protected": true,
+			"subCollection": [
+				{
+					"subCollectionname": "products",
+					"subCollectionField": "productId"
+				}
+			],
+			"RequiredFields": [
+				"productId",
+				"name",
+				"id"
+			]
+		},
+		{
+			"Code": "nkt.get.brand",
+			"Collection": "brand",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_GET_BRAND",
+			"Protected": true
+		},
+		{
+			"Code": "nkt.add.quantity",
+			"Collection": "quantity",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_ADD_QUANTITY",
+			"Protected": true,
+			"subCollection": [
+				{
+					"subCollectionname": "products",
+					"subCollectionField": "productId"
+				},
+				{
+					"subCollectionname": "brand",
+					"subCollectionField": "brandId"
+				}
+			],
+			"RequiredFields": [
+				"productId",
+				"brandId",
+				"name",
+				"quantity",
+				"unit",
+				"mrp"
+			]
+		},
+		{
+			"Code": "nkt.update.quantity",
+			"Collection": "quantity",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_UPDATE_QUANTITY",
+			"Protected": true,
+			"subCollection": [
+				{
+					"subCollectionname": "products",
+					"subCollectionField": "productId"
+				},
+				{
+					"subCollectionname": "brand",
+					"subCollectionField": "brandId"
+				}
+			],
+			"RequiredFields": [
+				"productId",
+				"brandId",
+				"name",
+				"quantity",
+				"unit",
+				"mrp",
+				"id"
+			]
+		},
+		{
+			"Code": "nkt.get.quantity",
+			"Collection": "quantity",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_GET_QUANTITY",
+			"Protected": true
+		},
+		{
+			"Code": "nkt.add.inventory",
+			"Collection": "inventory",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_ADD_INVENTORY",
+			"Protected": true,
+			"UserIdField": "userid",
+			"subCollection": [
+				{
+					"subCollectionname": "businessusers",
+					"subCollectionField": "userId"
+				},
+				{
+					"subCollectionname": "stores",
+					"subCollectionField": "userId",
+					"subCollectionColumnField":"userId"
+				},
+				{
+					"subCollectionname": "sections",
+					"subCollectionField": "categoryId"
+				},
+				{
+					"subCollectionname": "subsections",
+					"subCollectionField": "subCategoryId"
+				},
+				{
+					"subCollectionname": "products",
+					"subCollectionField": "productId"
+				},
+				{
+					"subCollectionname": "brand",
+					"subCollectionField": "brandId"
+				},
+				{
+					"subCollectionname": "quantity",
+					"subCollectionField": "quantityId"
+				}
+			],
+			"RequiredFields": [
+				"categoryId",
+				"subCategoryId",
+				"productId",
+				"brandId",
+				"quantityId",
+				"sellingPrice",
+				"offerPrice",
+				"availableStock",
+				"reservedStock",
+				"minimumStock"
+			]
+		},
+		{
+			"Code": "nkt.update.inventory",
+			"Collection": "inventory",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_UPDATE_INVENTORY",
+			"Protected": true,
+			"UserIdField": "userid",
+			"subCollection": [
+				{
+					"subCollectionname": "businessusers",
+					"subCollectionField": "userId"
+				},
+				{
+					"subCollectionname": "stores",
+					"subCollectionField": "userId",
+					"subCollectionColumnField": "userId"
+				},
+				{
+					"subCollectionname": "sections",
+					"subCollectionField": "categoryId"
+				},
+				{
+					"subCollectionname": "subsections",
+					"subCollectionField": "subCategoryId"
+				},
+				{
+					"subCollectionname": "products",
+					"subCollectionField": "productId"
+				},
+				{
+					"subCollectionname": "brand",
+					"subCollectionField": "brandId"
+				},
+				{
+					"subCollectionname": "quantity",
+					"subCollectionField": "quantityId"
+				}
+			],
+			"RequiredFields": [
+				"id",
+				"categoryId",
+				"subCategoryId",
+				"productId",
+				"brandId",
+				"quantityId",
+				"sellingPrice",
+				"offerPrice",
+				"availableStock",
+				"reservedStock",
+				"minimumStock"
+			]
+		},
+		{
+			"Code": "nkt.get.inventory",
+			"Collection": "inventory",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_GET_INVENTORY",
+			"Protected": true
 		}
 	],
 	"Processes": [
