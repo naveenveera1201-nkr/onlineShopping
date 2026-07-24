@@ -41,10 +41,17 @@ apis:
       - name: categoryId
         type: String
         location: BODY
-        required: true
+        required: false
         validation:
           minLength: 1
-          errorMessage: subCategoryId  is required
+          errorMessage: categoryId  is required
+      - name: searchText
+        type: String
+        location: BODY
+        required: false
+        validation:
+          minLength: 1
+          errorMessage: searchText  is required
     response:
       successCode: 200
       contentType: application/json

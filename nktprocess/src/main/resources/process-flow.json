@@ -220,8 +220,7 @@
 				"status": "ACTIVE"
 			},
 			"RequiredFields": [
-				"storeId",
-				"categoryId"
+				"storeId"
 			]
 		},
 		{
@@ -403,6 +402,9 @@
 			"StaticCriteria": {
 				"status": "ACTIVE"
 			},
+			"CriteriaFields": [
+				"userId"
+			],
 			"UserIdField": "userId"
 		},
 		{

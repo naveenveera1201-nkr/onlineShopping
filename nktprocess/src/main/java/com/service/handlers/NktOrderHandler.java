@@ -234,6 +234,7 @@ public class NktOrderHandler {
                 Map<String, Object> oi = new LinkedHashMap<>();
                 oi.put("stockId", stockId);
                 oi.put("stockName", stock.get("stockName"));
+                oi.put("name", stock.get("name"));
                 oi.put("qty", qty);
                 oi.put("price", price);
                 oi.put("total", itemTotal);
@@ -258,6 +259,7 @@ public class NktOrderHandler {
             order.put("userId", userId);
             order.put("storeId", storeId);
             order.put("storeName", store.get("storeName"));
+            order.put("name", store.get("name"));
             order.put("address", address);
             order.put("paymentMethod", str(data, "paymentMethod"));
             order.put("appointmentSlot", str(data, "appointmentSlot"));
@@ -312,7 +314,7 @@ public class NktOrderHandler {
             	String status = str(data, "status");
 
                 int page = 0;
-                int limit = 20;
+                int limit = 10;
 
                 try {
                     if (data.get("page") != null) {
@@ -333,7 +335,7 @@ public class NktOrderHandler {
 					page = 0;
 				
 				if (limit <= 0 || limit > 100)
-					limit = 20;
+					limit = 10;
 
 				// ✅ Build filter
 				Map<String, Object> filter = new LinkedHashMap<>();
@@ -890,7 +892,7 @@ public class NktOrderHandler {
             String status = str(data, "status");
 
             int page = 0;
-            int limit = 20;
+            int limit = 10;
 
             try {
                 if (data.get("page") != null)
