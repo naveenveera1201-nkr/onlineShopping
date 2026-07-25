@@ -378,6 +378,7 @@ public class NktCatalogueHandler {
                 Map<String, Object> obj = new LinkedHashMap<>();
                 obj.put("categoryId", catId);
                 obj.put("name", master.get("name"));
+                obj.put("categoryName", master.get("categoryName"));
 
                 // ✅ icon
                 obj.put("icon", enrichImages(master.get("icon")));
@@ -455,6 +456,7 @@ public class NktCatalogueHandler {
                 Map<String, Object> obj = new LinkedHashMap<>();
                 obj.put("subcategoryId", subId);
                 obj.put("name", master.get("name"));
+                obj.put("subCategoryName", master.get("subCategoryName"));
 
                 obj.put("icon", enrichImages(master.get("icon")));
 

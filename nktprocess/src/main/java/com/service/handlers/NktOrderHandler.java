@@ -702,6 +702,8 @@ public class NktOrderHandler {
             wi.put("itemId", itemId);
             wi.put("itemName", stock.get("stockName")); // ✅ FIXED
             wi.put("StoreName", store.get("storeName")); // ✅ Added store name
+            wi.put("name", stock.get("name"));
+            wi.put("s_name", store.get("name"));
             wi.put("price", stock.get("price"));
             wi.put("available", stock.get("status").equals("ACTIVE"));
             wi.put("status", "ACTIVE");
@@ -852,6 +854,8 @@ public class NktOrderHandler {
                 wi.put("stockCount", newCount);
                 wi.put("status", "ACTIVE");
                 wi.put("createdAt", LocalDateTime.now().toString());
+                wi.put("name", stock.get("name"));
+                wi.put("s_name", store.get("name"));
 
                 repo.insert("wishlist", wi);
 
