@@ -1,20 +1,27 @@
 package com.repository;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Completely model-less MongoDB repository for the NKT no-code platform.
@@ -96,6 +103,87 @@ public class NktDynamicRepository {
         return mongo.find(q, Document.class, collection)
                 .stream().map(this::toMap).collect(Collectors.toList());
     }
+    
+	/** Find with sort, skip, and limit. */
+	public List<Map<String, Object>> findAllSortedTwo(String collection, Map<String, Object> criteria,
+			String sortField1, String sortField2, Sort.Direction direction, int skip, int limit) {
+		Criteria mongoCriteria = buildCriteria(criteria);
+
+		Aggregation aggregation = Aggregation.newAggregation(
+
+				Aggregation.match(mongoCriteria),
+
+				Aggregation.addFields().addField("sortField")
+						.withValue(ConditionalOperators.ifNull(sortField2).thenValueOf(sortField1)).build(),
+
+				Aggregation.sort(direction, "sortField"),
+
+				Aggregation.skip((long) skip),
+
+				Aggregation.limit(limit));
+
+		List<Document> docs = mongo.aggregate(aggregation, collection, Document.class).getMappedResults();
+
+		return docs.stream().map(this::toMap).collect(Collectors.toList());
+	}
+
+	private Criteria buildCriteria(Map<String, Object> criteria) {
+
+		Criteria mongoCriteria = new Criteria();
+
+		if (criteria == null || criteria.isEmpty()) {
+			return mongoCriteria;
+		}
+
+		List<Criteria> conditions = new ArrayList<>();
+
+		for (Map.Entry<String, Object> entry : criteria.entrySet()) {
+
+			String key = entry.getKey();
+			Object value = entry.getValue();
+
+			if (value == null) {
+				continue;
+			}
+
+			if (value instanceof Map<?, ?> map) {
+
+				Criteria c = Criteria.where(key);
+
+				for (Map.Entry<?, ?> op : map.entrySet()) {
+
+					String operator = op.getKey().toString();
+					Object operatorValue = op.getValue();
+
+					switch (operator) {
+					case "$gt" -> c.gt(operatorValue);
+					case "$gte" -> c.gte(operatorValue);
+					case "$lt" -> c.lt(operatorValue);
+					case "$lte" -> c.lte(operatorValue);
+					case "$ne" -> c.ne(operatorValue);
+					case "$in" -> c.in((Collection<?>) operatorValue);
+					case "$nin" -> c.nin((Collection<?>) operatorValue);
+					case "$regex" -> {
+						String regex = operatorValue.toString();
+						String options = map.get("$options") != null ? map.get("$options").toString() : "";
+						c.regex(regex, options);
+					}
+					}
+				}
+
+				conditions.add(c);
+
+			} else {
+				conditions.add(Criteria.where(key).is(value));
+			}
+		}
+
+		if (!conditions.isEmpty()) {
+			mongoCriteria.andOperator(conditions.toArray(new Criteria[0]));
+		}
+
+		return mongoCriteria;
+	}
 
     /** Check existence. */
     public boolean exists(String collection, Map<String, Object> criteria) {

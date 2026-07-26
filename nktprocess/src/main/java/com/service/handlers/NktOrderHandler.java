@@ -920,10 +920,11 @@ public class NktOrderHandler {
             }
 
             // ✅ Step 4: Fetch orders
-            List<Map<String, Object>> orders = repo.findAllSorted(
+            List<Map<String, Object>> orders = repo.findAllSortedTwo(
                     "orders",
                     filter,
                     "createdAt",
+                    "updatedAt",
                     Sort.Direction.DESC,
                     page * limit,
                     limit
