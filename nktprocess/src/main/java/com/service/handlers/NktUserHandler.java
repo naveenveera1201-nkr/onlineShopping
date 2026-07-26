@@ -56,7 +56,9 @@ public class NktUserHandler {
     public NktOperationHandler addAddress() {
     	return (data, userId, repo, mapper, def) -> {
 
-    	    String tableName = data.get("userType") + def.getCollection();
+			String tableName = data.get("userType") + def.getCollection();
+			String latitude = str(data, "latitude");
+			String longitude = str(data, "longitude");
 
     	    if (!ObjectId.isValid(userId)) {
     	        return json(mapper, Map.of(
@@ -114,11 +116,12 @@ public class NktUserHandler {
     	    } else {
 
 				boolean labelExists = addresses.stream()
-						.anyMatch(a -> newLabel.equalsIgnoreCase(String.valueOf(a.get("label")))
+						.anyMatch(a -> latitude.equalsIgnoreCase(String.valueOf(a.get("latitude")))
+								&& longitude.equalsIgnoreCase(String.valueOf(a.get("longitude")))
 								&& (existingAddressId == null || !a.get("id").equals(existingAddressId)));
 
 				if (labelExists) {
-					return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Address label already exists"));
+					return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Address location already exists in the user"));
 				}
 
 
