@@ -196,52 +196,66 @@ public class NktOrderHandler {
             List<Map<String, Object>> orderItems = new ArrayList<>();
             double total = 0.0;
 
-            for (Map<String, Object> i : inputItems) {
+			for (Map<String, Object> i : inputItems) {
 
-                String stockId = (String) i.get("stockId");
-                int qty = i.get("qty") != null ? Integer.parseInt(i.get("qty").toString()) : 1;
+				String stockId = (String) i.get("stockId");
+				String selectedUnit = String.valueOf(i.get("unit"));
 
-                if (qty <= 0) {
-                    return json(mapper, Map.of(
-                            "statusCode", "N400",
-                            "statusDesc", "Invalid quantity for stockId: " + stockId
-                    ));
-                }
+				// ✅ Validate stock belongs to store
+				Map<String, Object> stock = repo
+						.findOneByCriteria("stocks", Map.of("stockId", stockId, "storeId", storeId, "status", "ACTIVE"))
+						.orElse(null);
 
-                // ✅ Validate stock belongs to store
-                Map<String, Object> stock = repo.findOneByCriteria("stocks",
-                        Map.of("stockId", stockId, "storeId", storeId, "status", "ACTIVE"))
-                        .orElse(null);
+				if (stock == null) {
+					return json(mapper,
+							Map.of("statusCode", "N400", "statusDesc", "Stock not found in store: " + stockId));
+				}
 
-                if (stock == null) {
-                    return json(mapper, Map.of(
-                            "statusCode", "N404",
-                            "statusDesc", "Stock not found in store: " + stockId
-                    ));
-                }
+				List<Map<String, Object>> units = (List<Map<String, Object>>) stock.get("unit");
 
-                // ✅ Availability check
-                if (stock.get("available") != null && !Boolean.TRUE.equals(stock.get("available"))) {
-                    return json(mapper, Map.of(
-                            "statusCode", "N400",
-                            "statusDesc", "Item not available: " + stockId
-                    ));
-                }
+				Map<String, Object> selectedUnitObj = units.stream()
+						.filter(u -> selectedUnit.equalsIgnoreCase(String.valueOf(u.get("qty")))).findFirst()
+						.orElse(null);
 
-                double price = Double.parseDouble(stock.get("price").toString());
-                double itemTotal = price * qty;
+				if (selectedUnitObj == null) {
+					return json(mapper, Map.of("statusCode", "N404", "statusDesc", "Unit not found : " + selectedUnit));
+				}
 
-                Map<String, Object> oi = new LinkedHashMap<>();
-                oi.put("stockId", stockId);
-                oi.put("stockName", stock.get("stockName"));
-                oi.put("name", stock.get("name"));
-                oi.put("qty", qty);
-                oi.put("price", price);
-                oi.put("total", itemTotal);
+				int qty = i.get("qty") != null ? Integer.parseInt(i.get("qty").toString()) : 1;
 
-                orderItems.add(oi);
-                total += itemTotal;
-            }
+				if (qty <= 0) {
+					return json(mapper,
+							Map.of("statusCode", "N400", "statusDesc", "Invalid quantity for stockId: " + stockId));
+				}
+
+				// ✅ Availability check
+				if (stock.get("available") != null && !Boolean.TRUE.equals(stock.get("available"))) {
+					return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Item not available: " + stockId));
+				}
+
+				int availableQty = Integer.parseInt(selectedUnitObj.get("availableQty").toString());
+
+				if (availableQty < qty) {
+					return json(mapper,
+							Map.of("statusCode", "N400", "statusDesc", "Insufficient stock for " + selectedUnit));
+				}
+
+				double price = Double.parseDouble(selectedUnitObj.get("price").toString());
+
+				double itemTotal = price * qty;
+
+				Map<String, Object> oi = new LinkedHashMap<>();
+				oi.put("stockId", stockId);
+				oi.put("stockName", stock.get("stockName"));
+				oi.put("name", stock.get("name"));
+				oi.put("qty", qty);
+				oi.put("price", price);
+				oi.put("total", itemTotal);
+				oi.put("unit", selectedUnitObj.get("qty"));
+
+				orderItems.add(oi);
+				total += itemTotal;
+			}
 
             // ✅ Create order
             String now = LocalDateTime.now().toString();
@@ -1194,40 +1208,69 @@ public class NktOrderHandler {
             if ("partially accepted".equals(status)) {
 
                 List<Map<String, Object>> acceptedItems = new ArrayList<>();
+               
                 double acceptedTotalAmount = 0.0;
 
                 for (Map<String, Object> item : fulfilledItems) {
 
-                    String stockId = String.valueOf(item.get("stockId"));
-                    int qty = Integer.parseInt(item.getOrDefault("qty", 1).toString());
+					String stockId = String.valueOf(item.get("stockId"));
 
-                    if (qty <= 0) {
+
+					String selectedUnit = String.valueOf(item.get("unit"));
+					
+					Map<String, Object> stock = repo.findOneByCriteria(
+							"stocks",
+							Map.of(
+									"stockId", stockId,
+									"storeId", storeId,
+									"status", "ACTIVE"))
+							.orElse(null);
+					
+					if (stock == null) {
+						return json(mapper,
+								Map.of("statusCode", "N404",
+										"statusDesc", "Stock not found : " + stockId));
+					}
+					
+					if (Boolean.FALSE.equals(stock.get("available"))) {
+						return json(mapper,
+								Map.of("statusCode", "N400",
+										"statusDesc", "Item not available : " + stockId));
+					}
+
+					List<Map<String, Object>> units = (List<Map<String, Object>>) stock.get("unit");
+
+					Map<String, Object> selectedUnitObj = units.stream()
+							.filter(u -> selectedUnit.equalsIgnoreCase(String.valueOf(u.get("qty")))).findFirst()
+							.orElse(null);
+
+					if (selectedUnitObj == null) {
+						return json(mapper,
+								Map.of("statusCode", "N404", "statusDesc", "Unit not found : " + selectedUnit));
+					}
+
+					int qty = Integer.parseInt(item.getOrDefault("qty", 1).toString());
+                  
+					if (qty <= 0) {
                         return json(mapper,
                                 Map.of("statusCode", "N400",
                                        "statusDesc", "Invalid quantity for stockId : " + stockId));
                     }
 
-                    Map<String, Object> stock = repo.findOneByCriteria(
-                            "stocks",
-                            Map.of(
-                                    "stockId", stockId,
-                                    "storeId", storeId,
-                                    "status", "ACTIVE"))
-                            .orElse(null);
+					// ✅ Availability check
+					if (stock.get("available") != null && !Boolean.TRUE.equals(stock.get("available"))) {
+						return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Item not available: " + stockId));
+					}
 
-                    if (stock == null) {
-                        return json(mapper,
-                                Map.of("statusCode", "N404",
-                                       "statusDesc", "Stock not found : " + stockId));
-                    }
+					int availableQty = Integer.parseInt(selectedUnitObj.get("availableQty").toString());
 
-                    if (Boolean.FALSE.equals(stock.get("available"))) {
-                        return json(mapper,
-                                Map.of("statusCode", "N400",
-                                       "statusDesc", "Item not available : " + stockId));
-                    }
+					if (availableQty < qty) {
+						return json(mapper,
+								Map.of("statusCode", "N400", "statusDesc", "Insufficient stock for " + selectedUnit));
+					}
 
-                    double price = Double.parseDouble(stock.get("price").toString());
+					double price = Double.parseDouble(selectedUnitObj.get("price").toString());
+
                     double total = price * qty;
 
                     Map<String, Object> acceptedItem = new LinkedHashMap<>();
@@ -1235,6 +1278,7 @@ public class NktOrderHandler {
                     acceptedItem.put("stockName", stock.get("stockName"));
                     acceptedItem.put("name", stock.get("name"));
                     acceptedItem.put("qty", qty);
+                    acceptedItem.put("unit", selectedUnitObj.get("qty"));
                     acceptedItem.put("price", price);
                     acceptedItem.put("total", total);
 
