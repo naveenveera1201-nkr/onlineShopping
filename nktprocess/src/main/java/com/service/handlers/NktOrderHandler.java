@@ -1042,6 +1042,8 @@ public class NktOrderHandler {
                 "status", newStatus,
                 "at", now
         ));
+        
+        
 
         Map<String, Object> updates = new LinkedHashMap<>();
         updates.put("status", newStatus);
@@ -1065,20 +1067,206 @@ public class NktOrderHandler {
         ));
     }
     
+//    public NktOperationHandler storeOrderAccept() {
+//        return (data, userId, repo, mapper, def) -> {
+//
+//            String orderId = str(data, "orderId");
+//            String storeId = resolveStoreId(userId, repo);
+//          
+//            Map<String, Object> order = getStoreOrder(orderId, storeId, repo);
+//          
+//            List<Map<String, Object>> stocks =
+//                    (List<Map<String, Object>>) data.get("fulfilledItems");
+//
+//            int requestTotalQuantity = stocks.stream()
+//                    .mapToInt(stock -> Integer.parseInt(stock.get("qty").toString()))
+//                    .sum();
+//
+//            System.out.println("Total Quantity : " + requestTotalQuantity);
+//            
+//            List<Map<String, Object>> items =
+//                    (List<Map<String, Object>>) order.get("items");
+//
+//            int orderTotalQuantity = items.stream()
+//                    .mapToInt(item -> Integer.parseInt(item.get("qty").toString()))
+//                    .sum();
+//
+//            Map<String, Object> extra = Map.of(
+//                    "storeNote", String.valueOf(data.getOrDefault("storeNote", ""))
+//            );
+//            
+////			String status = str(data, "partial").equalsIgnoreCase("true") ? "partially accepted" : "accepted";
+//			String status = requestTotalQuantity != orderTotalQuantity ? "partially accepted" : "accepted";
+//			
+//			if (requestTotalQuantity != orderTotalQuantity) {
+//				// ✅ Validate items
+//				List<Map<String, Object>> inputItems = list(mapper, data, "fulfilledItems");
+//				
+//				if (inputItems == null || inputItems.isEmpty()) {
+//					return json(mapper, Map.of("statusCode", "N400", "statusDesc", "No items provided"));
+//				}
+//
+//				List<Map<String, Object>> orderItems = new ArrayList<>();
+//				
+//				double total = 0.0;
+//
+//				for (Map<String, Object> i : inputItems) {
+//
+//					String stockId = (String) i.get("stockId");
+//					int qty = i.get("qty") != null ? Integer.parseInt(i.get("qty").toString()) : 1;
+//
+//					if (qty <= 0) {
+//						return json(mapper,
+//								Map.of("statusCode", "N400", "statusDesc", "Invalid quantity for stockId: " + stockId));
+//					}
+//
+//					// ✅ Validate stock belongs to store
+//					Map<String, Object> stock = repo.findOneByCriteria("stocks",
+//							Map.of("stockId", stockId, "storeId", storeId, "status", "ACTIVE")).orElse(null);
+//
+//					if (stock == null) {
+//						return json(mapper,
+//								Map.of("statusCode", "N404", "statusDesc", "Stock not found in store: " + stockId));
+//					}
+//
+//					// ✅ Availability check
+//					if (stock.get("available") != null && !Boolean.TRUE.equals(stock.get("available"))) {
+//						return json(mapper,
+//								Map.of("statusCode", "N400", "statusDesc", "Item not available: " + stockId));
+//					}
+//
+//					double price = Double.parseDouble(stock.get("price").toString());
+//					double itemTotal = price * qty;
+//
+//					Map<String, Object> oi = new LinkedHashMap<>();
+//					oi.put("stockId", stockId);
+//					oi.put("stockName", stock.get("stockName"));
+//					oi.put("name", stock.get("name"));
+//					oi.put("qty", qty);
+//					oi.put("price", price);
+//					oi.put("total", itemTotal);
+//
+//					orderItems.add(oi);
+//					total += itemTotal;
+//				}
+//				extra.put("acceptedItems", orderItems);
+//				extra.put("acceptedTotalAmount", total);
+//			}
+//
+//
+//            return updateOrderStatus(orderId, storeId, "placed", status, extra, repo, mapper);
+//        };
+//    }
+    
     public NktOperationHandler storeOrderAccept() {
         return (data, userId, repo, mapper, def) -> {
 
             String orderId = str(data, "orderId");
             String storeId = resolveStoreId(userId, repo);
 
-            Map<String, Object> extra = Map.of(
-                    "storeNote", String.valueOf(data.getOrDefault("storeNote", ""))
-            );
-            
-			String status = str(data, "partial").equalsIgnoreCase("true") ? "partially accepted" : "accepted";
+            Map<String, Object> order = getStoreOrder(orderId, storeId, repo);
 
-            return updateOrderStatus(orderId, storeId, "placed", status, extra, repo, mapper);
+            // Request fulfilled items
+            List<Map<String, Object>> fulfilledItems = list(mapper, data, "fulfilledItems");
+            if (fulfilledItems == null || fulfilledItems.isEmpty()) {
+                return json(mapper,
+                        Map.of("statusCode", "N400",
+                               "statusDesc", "No fulfilled items provided"));
+            }
+
+            // Original order items
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> orderItems =
+                    (List<Map<String, Object>>) order.get("items");
+
+            int requestTotalQuantity = getTotalQuantity(fulfilledItems);
+            int orderTotalQuantity = getTotalQuantity(orderItems);
+
+            String status = requestTotalQuantity == orderTotalQuantity
+                    ? "accepted"
+                    : "partially accepted";
+
+            Map<String, Object> extra = new HashMap<>();
+            extra.put("storeNote", String.valueOf(data.getOrDefault("storeNote", "")));
+
+            // Build accepted items only for partial acceptance
+            if ("partially accepted".equals(status)) {
+
+                List<Map<String, Object>> acceptedItems = new ArrayList<>();
+                double acceptedTotalAmount = 0.0;
+
+                for (Map<String, Object> item : fulfilledItems) {
+
+                    String stockId = String.valueOf(item.get("stockId"));
+                    int qty = Integer.parseInt(item.getOrDefault("qty", 1).toString());
+
+                    if (qty <= 0) {
+                        return json(mapper,
+                                Map.of("statusCode", "N400",
+                                       "statusDesc", "Invalid quantity for stockId : " + stockId));
+                    }
+
+                    Map<String, Object> stock = repo.findOneByCriteria(
+                            "stocks",
+                            Map.of(
+                                    "stockId", stockId,
+                                    "storeId", storeId,
+                                    "status", "ACTIVE"))
+                            .orElse(null);
+
+                    if (stock == null) {
+                        return json(mapper,
+                                Map.of("statusCode", "N404",
+                                       "statusDesc", "Stock not found : " + stockId));
+                    }
+
+                    if (Boolean.FALSE.equals(stock.get("available"))) {
+                        return json(mapper,
+                                Map.of("statusCode", "N400",
+                                       "statusDesc", "Item not available : " + stockId));
+                    }
+
+                    double price = Double.parseDouble(stock.get("price").toString());
+                    double total = price * qty;
+
+                    Map<String, Object> acceptedItem = new LinkedHashMap<>();
+                    acceptedItem.put("stockId", stockId);
+                    acceptedItem.put("stockName", stock.get("stockName"));
+                    acceptedItem.put("name", stock.get("name"));
+                    acceptedItem.put("qty", qty);
+                    acceptedItem.put("price", price);
+                    acceptedItem.put("total", total);
+
+                    acceptedItems.add(acceptedItem);
+                    acceptedTotalAmount += total;
+                }
+
+                extra.put("items", acceptedItems);
+                extra.put("totalAmount", acceptedTotalAmount);
+                extra.put("orderedItems", order.get("items"));
+                extra.put("orderedTotalAmount", order.get("totalAmount"));
+            }
+
+            return updateOrderStatus(
+                    orderId,
+                    storeId,
+                    "placed",
+                    status,
+                    extra,
+                    repo,
+                    mapper);
         };
+    }
+    
+    private int getTotalQuantity(List<Map<String, Object>> items) {
+
+        if (items == null || items.isEmpty()) {
+            return 0;
+        }
+
+        return items.stream()
+                .mapToInt(item -> Integer.parseInt(item.getOrDefault("qty", 0).toString()))
+                .sum();
     }
     
     public NktOperationHandler storeOrderReject() {
