@@ -140,6 +140,8 @@ public class NktOrderHandler {
 
             String storeId   = str(data, "storeId");
             String addressId = str(data, "addressId");
+            String receiverName = str(data, "receiverName");
+            String receiverMobileNumber = str(data, "receiverMobileNumber");
 
             // ✅ Validate required fields
             if (storeId == null || addressId == null) {
@@ -169,20 +171,31 @@ public class NktOrderHandler {
 
             List<Map<String, Object>> addresses =
                     (List<Map<String, Object>>) user.getOrDefault("addresses", new ArrayList<>());
-
-            boolean validAddress = addresses.stream()
-                    .anyMatch(a -> addressId.equals(a.get("id")));
             
+            Map<String, Object> address = new HashMap<>();
 
-            if (!validAddress) {
-                return json(mapper, Map.of(
-                        "statusCode", "N400",
-                        "statusDesc", "Invalid addressId"
-                ));
-            }
-            
-            Map<String, Object> address = addresses.stream().filter(a -> addressId.equals(a.get("id"))).findFirst()
-					.orElse(null);
+			if (!addressId.equalsIgnoreCase("current")) {
+
+				boolean validAddress = addresses.stream().anyMatch(a -> addressId.equals(a.get("id")));
+
+				if (!validAddress) {
+					return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Invalid addressId"));
+				}
+				
+				address = addresses.stream().filter(a -> addressId.equals(a.get("id"))).findFirst()
+						.orElse(null);
+			} else {
+				address.put("label", "Temporary");
+				address.put("line1",  str(data, "deliveryAddress"));
+				address.put("city", str(data, "city"));
+				address.put("state", str(data, "state"));
+				address.put("pincode", str(data, "pincode"));
+				address.put("latitude", str(data, "latitude"));
+				address.put("longitude", str(data, "longitude"));
+				address.put("status", "ACTIVE");
+				address.put("createdAt", LocalDateTime.now().toString());
+				
+			}
 
             // ✅ Validate items
 			List<Map<String, Object>> inputItems = list(mapper, data, "stocks");
@@ -282,6 +295,9 @@ public class NktOrderHandler {
             order.put("orderType", str(data, "orderType"));
             order.put("items", orderItems);
             order.put("totalAmount", total);
+			order.put("receiverName", receiverName != null ? receiverName : user.get("name"));
+			order.put("receiverMobileNumber",
+					receiverMobileNumber != null ? receiverMobileNumber : user.get("identifier"));
 
             // ✅ status
             order.put("status", "placed");

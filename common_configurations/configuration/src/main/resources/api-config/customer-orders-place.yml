@@ -87,6 +87,38 @@ apis:
         validation:
           pattern: ^(delivery|pickup|appointment)$
           errorMessage: orderType must be delivery, pickup, or appointment
+      - name: deliveryAddress
+        type: String
+        location: BODY
+        required: false
+      - name: latitude
+        type: String
+        location: BODY
+        required: false
+      - name: longitude
+        type: String
+        location: BODY
+        required: false
+      - name: city
+        type: String
+        location: BODY
+        required: false
+      - name: state
+        type: String
+        location: BODY
+        required: false
+      - name: pincode
+        type: String
+        location: BODY
+        required: false
+      - name: receiverName
+        type: String
+        location: BODY
+        required: false
+      - name: receiverMobileNumber
+        type: String
+        location: BODY
+        required: false
     response:
       successCode: 201
       contentType: application/json
