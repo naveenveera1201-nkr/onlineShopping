@@ -69,6 +69,10 @@ public class NktProcessDefinition {
 	/** Fields that must be present and non-null in the request data. */
 	@JsonProperty("RequiredFields")
 	private List<String> requiredFields;
+	
+	/** Fields that must be present and non-null in the request data. */
+	@JsonProperty("allowedRoles")
+	private List<String> allowedRoles;
 
 	/**
 	 * Field in the request data that holds the document id for FIND_BY_ID,

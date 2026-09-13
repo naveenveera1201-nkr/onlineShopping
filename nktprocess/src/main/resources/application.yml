@@ -24,7 +24,9 @@ otp:
   expiration: 30     # 3 mins
   dummy: Y
 image:
-  basepath: D:\Naveen\NKT\
+  basepath: ${IMAGE_BASEPATH:https://nkt-process-service.onrender.com/images/store/}
+bannerimage:
+  basepath: ${BANNER_IMAGE_BASEPATH:classpath*:/assets/images/store/}
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging:

@@ -11,6 +11,10 @@
 				"identifierType",
 				"userType",
 				"purpose"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -25,6 +29,10 @@
 				"userType",
 				"purpose",
 				"otp"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -35,6 +43,10 @@
 			"Protected": false,
 			"RequiredFields": [
 				"refreshToken"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -47,6 +59,10 @@
 				"deviceId",
 				"biometricToken",
 				"platform"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -58,6 +74,10 @@
 			"RequiredFields": [
 				"deviceId",
 				"biometricToken"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -66,7 +86,11 @@
 			"Operation": "CUSTOM",
 			"HandlerKey": "AUTH_LOGOUT",
 			"Protected": true,
-			"RequiredFields": []
+			"RequiredFields": [],
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.auth.deleteuser",
@@ -76,6 +100,14 @@
 			"Protected": true,
 			"RequiredFields": [
 				"reason"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -83,7 +115,11 @@
 			"Collection": "users",
 			"Operation": "FIND_BY_USER_ID",
 			"Protected": true,
-			"UserIdField": "userid"
+			"UserIdField": "userid",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.customer.update_profile",
@@ -94,7 +130,11 @@
 				"name",
 				"email"
 			],
-			"UserIdField": "userid"
+			"UserIdField": "userid",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.customer.add_address",
@@ -109,7 +149,11 @@
 				"state",
 				"pincode"
 			],
-			"UserIdField": "userid"
+			"UserIdField": "userid",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.customer.delete_address",
@@ -120,7 +164,11 @@
 			"RequiredFields": [
 				"addressId"
 			],
-			"UserIdField": "userid"
+			"UserIdField": "userid",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.customer.toggle_favourite",
@@ -131,40 +179,55 @@
 			"RequiredFields": [
 				"storeId"
 			],
-			"UserIdField": "userid"
+			"UserIdField": "userid",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.discover.categories",
 			"Collection": "categories",
 			"Operation": "FIND_ALL",
-			"Protected": false,
+			"Protected": true,
 			"StaticCriteria": {
 				"active": true
 			},
 			"SortField": "sortOrder",
 			"SortDirection": "ASC",
-			"UserIdField": "userid"
+			"UserIdField": "userid",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.discover.banners",
 			"Collection": "banners",
 			"Operation": "FIND_ALL",
-			"Protected": false,
+			"Protected": true,
 			"StaticCriteria": {
 				"active": true
 			},
 			"SortField": "sortOrder",
-			"SortDirection": "ASC"
+			"SortDirection": "ASC",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.discover.nearby_stores",
 			"Collection": "stores",
 			"Operation": "CUSTOM",
 			"HandlerKey": "DISCOVER_NEARBY_STORES",
-			"Protected": false,
+			"Protected": true,
 			"RequiredFields": [
 				"latitude",
 				"longitude"
+			],
+			"allowedRoles": [
+				"customer"
 			]
 		},
 		{
@@ -172,10 +235,14 @@
 			"Collection": "banner",
 			"Operation": "CUSTOM",
 			"HandlerKey": "DISCOVER_NEARBY_BANNER",
-			"Protected": false,
+			"Protected": true,
 			"RequiredFields": [
 				"latitude",
 				"longitude"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -183,14 +250,18 @@
 			"Collection": "type_of_store",
 			"Operation": "CUSTOM",
 			"HandlerKey": "DISCOVER_TYPES_OF_STORES",
-			"Protected": false
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.stores.category",
 			"Collection": "stores",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORES_CATEGORIES",
-			"Protected": false,
+			"Protected": true,
 			"CriteriaFields": [
 				"categoryId"
 			],
@@ -199,6 +270,10 @@
 			},
 			"RequiredFields": [
 				"storeId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -206,7 +281,7 @@
 			"Collection": "stores",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORES_SUBCATEGORIES",
-			"Protected": false,
+			"Protected": true,
 			"CriteriaFields": [
 				"categoryId"
 			],
@@ -216,6 +291,40 @@
 			"RequiredFields": [
 				"storeId",
 				"categoryId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
+		},
+		{
+			"Code": "nkt.store.token_generation",
+			"Collection": "stores",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORES_TOKEN_GENERATION",
+			"Protected": true,
+			"RequiredFields": [
+				"storeId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
+		},
+		{
+			"Code": "nkt.auth.staff_login",
+			"Collection": "store_staff_tokens",
+			"Operation": "CUSTOM",
+			"HandlerKey": "STORE_STAFF_LOGIN",
+			"Protected": false,
+			"RequiredFields": [
+				"storeId",
+				"authToken",
+				"deviceId",
+				"purpose"
+			],
+			"allowedRoles": [
+				"employee"
 			]
 		},
 		{
@@ -223,7 +332,7 @@
 			"Collection": "stocks",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORES_CATEGORIES_PRODUCTS",
-			"Protected": false,
+			"Protected": true,
 			"CriteriaFields": [
 				"categoryId"
 			],
@@ -232,58 +341,82 @@
 			},
 			"RequiredFields": [
 				"storeId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
 			"Code": "nkt.stores.list_by_category",
 			"Collection": "stores",
 			"Operation": "FIND_ALL",
-			"Protected": false,
+			"Protected": true,
 			"CriteriaFields": [
 				"categoryId"
 			],
 			"StaticCriteria": {
 				"status": "ACTIVE"
-			}
+			},
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.stores.get_details",
 			"Collection": "stores",
 			"Operation": "FIND_BY_ID",
-			"Protected": false,
-			"IdField": "storeId"
+			"Protected": true,
+			"IdField": "storeId",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.stores.get_products",
 			"Collection": "stockItems",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORES_GET_PRODUCTS",
-			"Protected": false,
+			"Protected": true,
 			"RequiredFields": [
 				"storeId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
 			"Code": "nkt.stores.get_services",
 			"Collection": "stockItems",
 			"Operation": "FIND_ALL",
-			"Protected": false,
+			"Protected": true,
 			"CriteriaFields": [
 				"storeId"
 			],
 			"StaticCriteria": {
 				"category": "service",
 				"status": "ACTIVE"
-			}
+			},
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.stores.get_availability",
 			"Collection": "stores",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORES_GET_AVAILABILITY",
-			"Protected": false,
+			"Protected": true,
 			"RequiredFields": [
 				"storeId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -295,6 +428,10 @@
 			"RequiredFields": [
 				"storeId",
 				"items"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -309,14 +446,22 @@
 				"addressId",
 				"paymentMethod"
 			],
-			"UserIdField": "customerId"
+			"UserIdField": "customerId",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.order.details",
 			"Collection": "orders",
 			"Operation": "CUSTOM",
 			"HandlerKey": "CUSTOMER_ORDER_DETAILS",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.order.view",
@@ -327,14 +472,22 @@
 			"RequiredFields": [
 				"orderId"
 			],
-			"UserIdField": "userid"
+			"UserIdField": "userid",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.order.history",
 			"Collection": "orders",
 			"Operation": "CUSTOM",
 			"HandlerKey": "ORDER_HISTORY",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.order.get_detail",
@@ -344,6 +497,11 @@
 			"Protected": true,
 			"RequiredFields": [
 				"orderId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business",
+				"employee"
 			]
 		},
 		{
@@ -355,7 +513,11 @@
 			"RequiredFields": [
 				"orderId"
 			],
-			"UserIdField": "userid"
+			"UserIdField": "userid",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.order.cancel",
@@ -365,6 +527,11 @@
 			"Protected": true,
 			"RequiredFields": [
 				"orderId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business",
+				"employee"
 			]
 		},
 		{
@@ -376,6 +543,10 @@
 			"RequiredFields": [
 				"orderId",
 				"rating"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -389,21 +560,33 @@
 				"method",
 				"amount"
 			],
-			"UserIdField": "customerId"
+			"UserIdField": "customerId",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.payment.status",
 			"Collection": "payments",
 			"Operation": "FIND_BY_ID",
 			"IdField": "paymentId",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.payment.webhook",
 			"Collection": "payments",
 			"Operation": "CUSTOM",
 			"HandlerKey": "PAYMENT_WEBHOOK",
-			"Protected": false
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.wishlist.get",
@@ -416,7 +599,11 @@
 			"CriteriaFields": [
 				"userId"
 			],
-			"UserIdField": "userId"
+			"UserIdField": "userId",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.wishlist.add",
@@ -426,6 +613,10 @@
 			"Protected": true,
 			"RequiredFields": [
 				"itemId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -438,6 +629,10 @@
 				"storeId",
 				"stockId",
 				"stockCount"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -448,6 +643,10 @@
 			"Protected": true,
 			"RequiredFields": [
 				"itemId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -460,6 +659,10 @@
 				"deviceToken",
 				"platform",
 				"userType"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -467,10 +670,14 @@
 			"Collection": "",
 			"Operation": "CUSTOM",
 			"HandlerKey": "LOCATION_REVERSE_GEOCODE",
-			"Protected": false,
+			"Protected": true,
 			"RequiredFields": [
 				"latitude",
 				"longitude"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -478,9 +685,13 @@
 			"Collection": "",
 			"Operation": "CUSTOM",
 			"HandlerKey": "LOCATION_GLOBAL_SEARCH",
-			"Protected": false,
+			"Protected": true,
 			"RequiredFields": [
 				"q"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -488,14 +699,22 @@
 			"Collection": "stores",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_PROFILE_GET",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.store_profile.update",
 			"Collection": "stores",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_PROFILE_UPDATE",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.store_profile.toggle",
@@ -505,6 +724,10 @@
 			"Protected": true,
 			"RequiredFields": [
 				"isOpen"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -512,14 +735,22 @@
 			"Collection": "stores",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_PROFILE_DASHBOARD",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.stock.list",
 			"Collection": "stockItems",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STOCK_LIST",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.stock.add",
@@ -531,6 +762,10 @@
 				"name",
 				"price",
 				"category"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -538,7 +773,11 @@
 			"Collection": "stockItems",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STOCK_CATEGORIES",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.stock.update",
@@ -548,6 +787,10 @@
 			"Protected": true,
 			"RequiredFields": [
 				"itemId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -559,6 +802,10 @@
 			"RequiredFields": [
 				"itemId",
 				"delta"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -570,6 +817,10 @@
 			"RequiredFields": [
 				"itemId",
 				"available"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -580,6 +831,10 @@
 			"Protected": true,
 			"RequiredFields": [
 				"itemId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -587,7 +842,11 @@
 			"Collection": "orders",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_ORDER_LIST",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.store_order.accept",
@@ -598,7 +857,12 @@
 			"RequiredFields": [
 				"orderId"
 			],
-			"UserIdField": "customerId"
+			"UserIdField": "customerId",
+			"allowedRoles": [
+				"customer",
+				"business",
+				"employee"
+			]
 		},
 		{
 			"Code": "nkt.store_order.reject",
@@ -609,7 +873,12 @@
 			"RequiredFields": [
 				"orderId"
 			],
-			"UserIdField": "customerId"
+			"UserIdField": "customerId",
+			"allowedRoles": [
+				"customer",
+				"business",
+				"employee"
+			]
 		},
 		{
 			"Code": "nkt.store_order.dispatch",
@@ -622,7 +891,12 @@
 				"agentName",
 				"agentPhone"
 			],
-			"UserIdField": "customerId"
+			"UserIdField": "customerId",
+			"allowedRoles": [
+				"customer",
+				"business",
+				"employee"
+			]
 		},
 		{
 			"Code": "nkt.store_order.deliver",
@@ -633,7 +907,11 @@
 			"RequiredFields": [
 				"orderId"
 			],
-			"UserIdField": "customerId"
+			"UserIdField": "customerId",
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.add.category",
@@ -644,6 +922,10 @@
 			"RequiredFields": [
 				"name",
 				"typeOfStore"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -661,6 +943,10 @@
 			"RequiredFields": [
 				"categoryId",
 				"name"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -683,6 +969,10 @@
 				"categoryId",
 				"subCategoryId",
 				"name"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -695,6 +985,10 @@
 				"id",
 				"name",
 				"typeOfStore"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -713,6 +1007,10 @@
 				"categoryId",
 				"name",
 				"id"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -736,6 +1034,10 @@
 				"subCategoryId",
 				"name",
 				"id"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -743,21 +1045,33 @@
 			"Collection": "sections",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_GET_CATEGORY",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.get.subcategory",
 			"Collection": "subsections",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_GET_SUBCATEGORY",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.get.products",
 			"Collection": "products",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_GET_PRODUCTS",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.add.brand",
@@ -774,6 +1088,10 @@
 			"RequiredFields": [
 				"productId",
 				"name"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -792,6 +1110,10 @@
 				"productId",
 				"name",
 				"id"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -799,7 +1121,11 @@
 			"Collection": "brand",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_GET_BRAND",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.add.quantity",
@@ -824,6 +1150,10 @@
 				"quantity",
 				"unit",
 				"mrp"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -850,6 +1180,10 @@
 				"unit",
 				"mrp",
 				"id"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -857,7 +1191,11 @@
 			"Collection": "quantity",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_GET_QUANTITY",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		},
 		{
 			"Code": "nkt.add.inventory",
@@ -874,7 +1212,7 @@
 				{
 					"subCollectionname": "stores",
 					"subCollectionField": "userId",
-					"subCollectionColumnField":"userId"
+					"subCollectionColumnField": "userId"
 				},
 				{
 					"subCollectionname": "sections",
@@ -908,6 +1246,10 @@
 				"availableStock",
 				"reservedStock",
 				"minimumStock"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -960,6 +1302,10 @@
 				"availableStock",
 				"reservedStock",
 				"minimumStock"
+			],
+			"allowedRoles": [
+				"customer",
+				"business"
 			]
 		},
 		{
@@ -967,7 +1313,11 @@
 			"Collection": "inventory",
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_GET_INVENTORY",
-			"Protected": true
+			"Protected": true,
+			"allowedRoles": [
+				"customer",
+				"business"
+			]
 		}
 	],
 	"Processes": [

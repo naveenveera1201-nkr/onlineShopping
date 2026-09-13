@@ -44,6 +44,9 @@ public class NktCatalogueHandler {
 	
 	@Value("${image.basepath}")
 	private String basePath;
+	
+	@Value("${bannerimage.basepath}")
+	private String bannerBasePath;
 
     private String str(Map<String, Object> d, String k) {
         Object v = d.get(k); return v == null ? null : v.toString();
@@ -194,122 +197,129 @@ public class NktCatalogueHandler {
         };
     }
     
-	public NktOperationHandler nearbyBanners() {
-		return (data, userId, repo, mapper, def) -> {
+    public NktOperationHandler nearbyBanners() {
+        return (data, userId, repo, mapper, def) -> {
 
-			List<Map<String, Object>> nearby = new ArrayList<>();
-			try {
-				// ✅ Validate input
-				if (str(data, "latitude") == null || str(data, "longitude") == null) {
-					return json(mapper,
-							Map.of("statusCode", "N400", "statusDesc", "Latitude and Longitude are required"));
-				}
+            List<Map<String, Object>> nearby = new ArrayList<>();
+            try {
+                // ✅ Validate input
+                if (str(data, "latitude") == null || str(data, "longitude") == null) {
+                    return json(mapper,
+                            Map.of("statusCode", "N400", "statusDesc", "Latitude and Longitude are required"));
+                }
 
-				double lat;
-				double lon;
+                double lat;
+                double lon;
 
-				try {
-					lat = Double.parseDouble(str(data, "latitude"));
-					lon = Double.parseDouble(str(data, "longitude"));
-				} catch (Exception e) {
-					return json(mapper,
-							Map.of("statusCode", "N400", "statusDesc", "Invalid latitude/longitude format"));
-				}
+                try {
+                    lat = Double.parseDouble(str(data, "latitude"));
+                    lon = Double.parseDouble(str(data, "longitude"));
+                } catch (Exception e) {
+                    return json(mapper,
+                            Map.of("statusCode", "N400", "statusDesc", "Invalid latitude/longitude format"));
+                }
 
-				double radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
+                double radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
 
-				nearby = repo.findAll(def.getCollection()).stream().map(store -> {
-					Object addrObj = store.get("location");
+                nearby = repo.findAll(def.getCollection()).stream().map(store -> {
+                            Object addrObj = store.get("location");
 
-					if (!(addrObj instanceof Map))
-						return null;
+                            if (!(addrObj instanceof Map))
+                                return null;
 
-					@SuppressWarnings("unchecked")
-					Map<String, Object> addr = (Map<String, Object>) addrObj;
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> addr = (Map<String, Object>) addrObj;
 
-					Object sLat = addr.get("latitude");
-					Object sLon = addr.get("longitude");
+                            Object sLat = addr.get("latitude");
+                            Object sLon = addr.get("longitude");
 
-					if (sLat == null || sLon == null)
-						return null;
+                            if (sLat == null || sLon == null)
+                                return null;
 
-					double distance = haversine(lat, lon, Double.parseDouble(sLat.toString()),
-							Double.parseDouble(sLon.toString()));
+                            double distance = haversine(lat, lon, Double.parseDouble(sLat.toString()),
+                                    Double.parseDouble(sLon.toString()));
 
-					// ✅ filter by radius
-					if (distance > radius)
-						return null;
+                            // ✅ filter by radius
+                            if (distance > radius)
+                                return null;
 
-//						Map<String, Object> result = new LinkedHashMap<>(store);
-					Map<String, Object> result = new LinkedHashMap<>();
+//                      Map<String, Object> result = new LinkedHashMap<>(store);
+                            Map<String, Object> result = new LinkedHashMap<>();
 
-					List<Map<String, Object>> banners = (List<Map<String, Object>>) store.get("bannerImage");
-					List<Map<String, Object>> bannersImageList = new ArrayList<>();
+                            List<Map<String, Object>> banners = (List<Map<String, Object>>) store.get("bannerImage");
+                            List<Map<String, Object>> bannersImageList = new ArrayList<>();
 
 
-					result.put("storeId", store.get("storeId"));
+                            result.put("storeId", store.get("storeId"));
 
-					PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+                            PathMatchingResourcePatternResolver resolver =
+                                    new PathMatchingResourcePatternResolver();
 
-					String resourcePath = "classpath*:/assets/images/store/" + store.get("storeId") + "/**/*.*";
-					Resource[] resources;
-					try {
-						resources = resolver.getResources(resourcePath);
-						for (Resource resource : resources) {
-							Map<String, Object> bannerList = new LinkedHashMap<>();
-							banners.forEach(bannerImage -> {
-								if (bannerImage.get("filename").equals(resource.getFilename())
-										&& (bannerImage.get("status").equals("ACTIVE"))) {
-									try {
-										URL url;
+                            String storeId = store.get("storeId").toString().toUpperCase();
 
-										url = resource.getURL();
-										
+                            String resourcePath =
+                                    "classpath*:/static/images/store/"
+                                            + storeId
+                                            + "/**/*.*";
 
-//										String path = url.toString();
-//
-//										int index = path.indexOf("/image/");
-//
-//										if (index >= 0) {
-//											path = path.substring(index + 1);
-//										}
-										
-										bannerList.put("fileName", resource.getFilename());
-										bannerList.put("filePath", url.getPath());
-										bannerList.put("path", bannerImage.get("localPath"));
-										bannersImageList.add(bannerList);
-										
-									} catch (IOException e) {
-										e.printStackTrace();
-									}
+                            log.info("ImageResourcePath: {}", resourcePath);
 
-								}
-							});
-						}
-						result.put("bannerImage", bannersImageList);
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					
-//					if (banners != null && !banners.isEmpty()) {
-//						result.put("bannerImage", banners);
-//					}
+                            Resource[] resources;
 
-					// ✅ distance
-					result.put("distanceKm", distance);
+                            try {
+                                resources = resolver.getResources(resourcePath);
 
-					return result;
-				}).filter(Objects::nonNull).sorted(Comparator.comparingDouble(s -> (double) s.get("distanceKm")))
-						.limit(50).collect(Collectors.toList());
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+                                for (Resource resource : resources) {
 
-			return json(mapper,
-					Map.of("data", nearby, "count", nearby.size(), "statusCode", "N200", "statusDesc", "Success"));
-		};
-	}
+                                    Map<String, Object> bannerList = new LinkedHashMap<>();
+
+                                    banners.forEach(bannerImage -> {
+
+                                        if (bannerImage.get("filename").equals(resource.getFilename())
+                                                && "ACTIVE".equals(bannerImage.get("status"))) {
+
+                                            String fileName = resource.getFilename();
+
+                                            // Public HTTP path — NOT the internal JAR path
+                                            String imagePath =
+                                                    "/images/store/" + storeId + "/" + fileName;
+
+                                            log.info("ImageFileName: {}", fileName);
+                                            log.info("ImagePath: {}", imagePath);
+
+                                            bannerList.put("fileName", fileName);
+                                            bannerList.put("filePath", imagePath);
+                                            bannerList.put("path", imagePath);
+
+                                            bannersImageList.add(bannerList);
+                                        }
+                                    });
+                                }
+
+                                result.put("bannerImage", bannersImageList);
+
+                            } catch (IOException e) {
+                                log.error("Error while loading store banner images", e);
+                            }
+
+//                  if (banners != null && !banners.isEmpty()) {
+//                      result.put("bannerImage", banners);
+//                  }
+
+                            // ✅ distance
+                            result.put("distanceKm", distance);
+
+                            return result;
+                        }).filter(Objects::nonNull).sorted(Comparator.comparingDouble(s -> (double) s.get("distanceKm")))
+                        .limit(50).collect(Collectors.toList());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return json(mapper,
+                    Map.of("data", nearby, "count", nearby.size(), "statusCode", "N200", "statusDesc", "Success"));
+        };
+    }
 
 //	public NktOperationHandler nearbyBanners() {
 //

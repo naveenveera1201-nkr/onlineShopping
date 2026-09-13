@@ -99,6 +99,7 @@ public class NktCoreService {
         handlers.put("AUTH_VERIFY_BIOMETRIC",  authHandler.verifyBiometric());
         handlers.put("AUTH_LOGOUT",            authHandler.logout());
         handlers.put("AUTH_DELETE_USER",       authHandler.deleteUser());
+        handlers.put("STORE_STAFF_LOGIN",       authHandler.storeStaffLogin());
 
         // User / Customer / StoreProfile / Notification
         handlers.put("CUSTOMER_ADD_ADDRESS",    userHandler.addAddress());
@@ -146,6 +147,7 @@ public class NktCoreService {
 		handlers.put("STORE_ADD_INVENTORY", catalogueHandler.addStoreInventory());
 		handlers.put("STORE_UPDATE_INVENTORY", catalogueHandler.updateStoreInventory());
 		handlers.put("STORE_GET_INVENTORY", catalogueHandler.getStoreInventory());
+		handlers.put("STORES_TOKEN_GENERATION", authHandler.generateStoreStaffToken());
 
         // Orders / Wishlist / StoreOrders
         handlers.put("ORDER_VALIDATE_CART", orderHandler.validateCart());
@@ -200,6 +202,7 @@ public class NktCoreService {
         if (def.isProtectedEndpoint()) {
             userId = extractUserId(data).split(",")[0];
             userType = extractUserId(data).split(",")[1];
+            validateRoles(def, userType);
         }
         // Strip the token from data so it never reaches handlers / DB
         data.remove("token");
@@ -442,6 +445,17 @@ public class NktCoreService {
         if (!missing.isEmpty())
             throw new RuntimeException("Missing required fields: " + missing);
     }
+    
+	private void validateRoles(NktProcessDefinition def, String userType) {
+		List<String> allowedRoles = def.getAllowedRoles();
+		if (allowedRoles == null || allowedRoles.isEmpty())
+			return;
+
+		if (!allowedRoles.contains(userType)) {
+			throw new RuntimeException("Unauthorized: user type '" + userType + "' not allowed for this operation");
+		}
+
+	}
 
 	private String extractUserId(Map<String, Object> data) {
 		

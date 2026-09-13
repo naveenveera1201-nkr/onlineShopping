@@ -1,0 +1,94 @@
+apis:
+  - id: auth-verify-token
+    name: Verify staff token
+    version: v1
+    method: POST
+    path: /api/v1/auth/verify-token
+    description: Validates the token
+      if purpose=register.
+    enabled: true
+    security:
+      authentication:
+        enabled: false
+        type: JWT
+        roles:
+        - PUBLIC
+      authorization:
+        enabled: false
+      rateLimit:
+        enabled: true
+        requestsPerMinute: 10
+        requestsPerHour: 100
+      encryption:
+        enabled: true
+        algorithm: AES256
+    request:
+      contentType: application/json
+      parameters:
+      - name: storeId
+        type: String
+        location: BODY
+        required: true
+      - name: authToken
+        type: String
+        location: BODY
+        required: true
+      - name: deviceId
+        type: String
+        location: BODY
+        required: true
+      - name: employeeName
+        type: String
+        location: BODY
+        required: false
+      - name: purpose
+        type: String
+        location: BODY
+        required: true
+        validation:
+          pattern: ^(register|login)$
+          errorMessage: purpose must be 'register' or 'login'
+    response:
+      successCode: 200
+      contentType: application/json
+      fields:
+      - name: id
+        type: Long
+        description: Generated AuthToken ID
+      - name: history
+        type: String
+        description: history
+      - name: data
+        type: String
+        description: registered data
+      - name: currentStatus
+        type: String
+        description: Record status
+        defaultValue: ACTIVE
+      - name: createdAt
+        type: LocalDateTime
+        description: Creation timestamp
+      - name: createdBy
+        type: String
+        description: created by
+    businessLogic:
+      businessLogicRequired: "Y"
+      processCode: nkt.auth.staff_login
+      type: CUSTOM_SERVICE
+      dataSource: primaryDb
+      operations:
+      - type: INSERT
+        entity: AuthToken
+        mapping:
+          identifier: "#{request.identifier}"
+          otp: "#{request.otp}"
+          userType: "#{request.userType}"
+          purpose: "#{request.purpose}"
+          name: "#{request.name}"
+          email: "#{request.email}"
+          createdAt: "#{now()}"
+          status: ACTIVE
+    callbacks:
+    - event: SUCCESS
+      type: WEBHOOK
+      url: "https://api.nammakadaitheru.in/webhooks/authtoken-event"
