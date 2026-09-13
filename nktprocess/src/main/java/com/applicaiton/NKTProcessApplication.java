@@ -1,11 +1,14 @@
 package com.applicaiton;
 
+import java.util.TimeZone;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -33,7 +36,13 @@ import lombok.extern.slf4j.Slf4j;
 @EnableFeignClients(basePackages = {"com.feign"})
 @Slf4j
 public class NKTProcessApplication {
-
+	
+	 @PostConstruct
+	    public void init() {
+	        // Sets the default JVM timezone globally for this application session
+	        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
+//	        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Singapore"));
+	    }
     public static void main(String[] args) {
         SpringApplication.run(NKTProcessApplication.class, args);
     }

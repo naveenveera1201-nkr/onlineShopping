@@ -33,3 +33,10 @@ logging:
     com.service: DEBUG
     com.security: INFO
     org.springframework.security: INFO
+
+aws:
+  accessKey: 123
+  secretKey: 123
+  region: 132
+  s3:
+    bucketName: 23QWW

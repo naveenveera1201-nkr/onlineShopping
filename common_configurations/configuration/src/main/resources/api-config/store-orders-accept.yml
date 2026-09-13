@@ -53,6 +53,10 @@ apis:
         validation:
           maxLength: 500
           errorMessage: Store note must be under 500 characters
+      - name: totalAmount
+        type: String
+        location: BODY
+        required: false
     response:
       successCode: 200
       contentType: application/json

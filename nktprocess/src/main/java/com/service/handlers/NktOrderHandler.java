@@ -298,6 +298,7 @@ public class NktOrderHandler {
 			order.put("receiverName", receiverName != null ? receiverName : user.get("name"));
 			order.put("receiverMobileNumber",
 					receiverMobileNumber != null ? receiverMobileNumber : user.get("identifier"));
+			order.put("storeAddress", store.get("location"));
 
             // ✅ status
             order.put("status", "placed");
@@ -1285,7 +1286,7 @@ public class NktOrderHandler {
 								Map.of("statusCode", "N400", "statusDesc", "Insufficient stock for " + selectedUnit));
 					}
 
-					double price = Double.parseDouble(selectedUnitObj.get("price").toString());
+					double price = Double.parseDouble(item.get("price").toString());
 
                     double total = price * qty;
 
@@ -1306,7 +1307,10 @@ public class NktOrderHandler {
                 extra.put("totalAmount", acceptedTotalAmount);
                 extra.put("orderedItems", order.get("items"));
                 extra.put("orderedTotalAmount", order.get("totalAmount"));
-            }
+			} else {
+				extra.put("totalAmount", str(data, "totalAmount"));
+
+			}
 
             return updateOrderStatus(
                     orderId,

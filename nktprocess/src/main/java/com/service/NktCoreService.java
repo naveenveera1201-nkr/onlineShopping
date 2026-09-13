@@ -113,6 +113,7 @@ public class NktCoreService {
         // Catalogue / Stock / Location / Discover
         handlers.put("DISCOVER_TYPES_OF_STORES", catalogueHandler.typesOfStore());
         handlers.put("DISCOVER_NEARBY_STORES",   catalogueHandler.nearbyStores());
+        handlers.put("DISCOVER_NEARBY_BANNER",   catalogueHandler.nearbyBanners());
         handlers.put("STORES_GET_PRODUCTS",      catalogueHandler.storeProducts());
         handlers.put("STORES_GET_AVAILABILITY",  catalogueHandler.storeAvailability());
         handlers.put("STOCK_LIST",               catalogueHandler.stockList());

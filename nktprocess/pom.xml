@@ -173,15 +173,27 @@
 			<groupId>com.fasterxml.jackson.datatype</groupId>
 			<artifactId>jackson-datatype-jsr310</artifactId>
 		</dependency>
+		<!-- Spring Boot Web starter -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		 <!--AWS SDK v2 S3 Dependency -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+			<version>2.25.15</version> <!-- Use the latest version available -->
+		</dependency>
 	</dependencies>
 	<build>
 	 <finalName>nktprocess</finalName>
 		<plugins>
 
-			<!--<plugin>
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>-->
+			</plugin>
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

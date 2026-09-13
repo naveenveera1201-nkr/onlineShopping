@@ -1,17 +1,24 @@
 package com.service.handlers;
 
+import java.io.IOException;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -187,6 +194,358 @@ public class NktCatalogueHandler {
         };
     }
     
+	public NktOperationHandler nearbyBanners() {
+		return (data, userId, repo, mapper, def) -> {
+
+			List<Map<String, Object>> nearby = new ArrayList<>();
+			try {
+				// ✅ Validate input
+				if (str(data, "latitude") == null || str(data, "longitude") == null) {
+					return json(mapper,
+							Map.of("statusCode", "N400", "statusDesc", "Latitude and Longitude are required"));
+				}
+
+				double lat;
+				double lon;
+
+				try {
+					lat = Double.parseDouble(str(data, "latitude"));
+					lon = Double.parseDouble(str(data, "longitude"));
+				} catch (Exception e) {
+					return json(mapper,
+							Map.of("statusCode", "N400", "statusDesc", "Invalid latitude/longitude format"));
+				}
+
+				double radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
+
+				nearby = repo.findAll(def.getCollection()).stream().map(store -> {
+					Object addrObj = store.get("location");
+
+					if (!(addrObj instanceof Map))
+						return null;
+
+					@SuppressWarnings("unchecked")
+					Map<String, Object> addr = (Map<String, Object>) addrObj;
+
+					Object sLat = addr.get("latitude");
+					Object sLon = addr.get("longitude");
+
+					if (sLat == null || sLon == null)
+						return null;
+
+					double distance = haversine(lat, lon, Double.parseDouble(sLat.toString()),
+							Double.parseDouble(sLon.toString()));
+
+					// ✅ filter by radius
+					if (distance > radius)
+						return null;
+
+//						Map<String, Object> result = new LinkedHashMap<>(store);
+					Map<String, Object> result = new LinkedHashMap<>();
+
+					List<Map<String, Object>> banners = (List<Map<String, Object>>) store.get("bannerImage");
+					List<Map<String, Object>> bannersImageList = new ArrayList<>();
+
+
+					result.put("storeId", store.get("storeId"));
+
+					PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+
+					String resourcePath = "classpath*:/assets/images/store/" + store.get("storeId") + "/**/*.*";
+					Resource[] resources;
+					try {
+						resources = resolver.getResources(resourcePath);
+						for (Resource resource : resources) {
+							Map<String, Object> bannerList = new LinkedHashMap<>();
+							banners.forEach(bannerImage -> {
+								if (bannerImage.get("filename").equals(resource.getFilename())
+										&& (bannerImage.get("status").equals("ACTIVE"))) {
+									try {
+										URL url;
+
+										url = resource.getURL();
+										
+
+//										String path = url.toString();
+//
+//										int index = path.indexOf("/image/");
+//
+//										if (index >= 0) {
+//											path = path.substring(index + 1);
+//										}
+										
+										bannerList.put("fileName", resource.getFilename());
+										bannerList.put("filePath", url.getPath());
+										bannerList.put("path", bannerImage.get("localPath"));
+										bannersImageList.add(bannerList);
+										
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+
+								}
+							});
+						}
+						result.put("bannerImage", bannersImageList);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+//					if (banners != null && !banners.isEmpty()) {
+//						result.put("bannerImage", banners);
+//					}
+
+					// ✅ distance
+					result.put("distanceKm", distance);
+
+					return result;
+				}).filter(Objects::nonNull).sorted(Comparator.comparingDouble(s -> (double) s.get("distanceKm")))
+						.limit(50).collect(Collectors.toList());
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			return json(mapper,
+					Map.of("data", nearby, "count", nearby.size(), "statusCode", "N200", "statusDesc", "Success"));
+		};
+	}
+
+//	public NktOperationHandler nearbyBanners() {
+//
+//		return (data, userId, repo, mapper, def) -> {
+//
+//			try {
+//
+//				// ---------------------------------------------------------
+//				// 1. Validate latitude and longitude
+//				// ---------------------------------------------------------
+//				String latitudeValue = str(data, "latitude");
+//				String longitudeValue = str(data, "longitude");
+//
+//				if (latitudeValue == null || longitudeValue == null) {
+//					return json(mapper,
+//							Map.of("statusCode", "N400", "statusDesc", "Latitude and Longitude are required"));
+//				}
+//
+//				// ---------------------------------------------------------
+//				// 2. Parse latitude and longitude
+//				// ---------------------------------------------------------
+//				double latitude;
+//				double longitude;
+//
+//				try {
+//					latitude = Double.parseDouble(latitudeValue);
+//					longitude = Double.parseDouble(longitudeValue);
+//				} catch (NumberFormatException e) {
+//					return json(mapper,
+//							Map.of("statusCode", "N400", "statusDesc", "Invalid latitude/longitude format"));
+//				}
+//
+//				double radiusKm = Double.valueOf(str(data, "radiusKm") != null ? str(data, "radiusKm") : "5.0");
+//
+//				if (data.get("radiusKm") != null) {
+//					try {
+//						radiusKm = Double.parseDouble(str(data, "radiusKm"));
+//					} catch (NumberFormatException e) {
+//						return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Invalid radiusKm format"));
+//					}
+//				}
+//
+//				if (radiusKm <= 0) {
+//					return json(mapper,
+//							Map.of("statusCode", "N400", "statusDesc", "radiusKm must be greater than zero"));
+//				}
+//
+//				// ---------------------------------------------------------
+//				// 4. Read stores
+//				// ---------------------------------------------------------
+//				List<Map<String, Object>> stores = repo.findAll(def.getCollection());
+//
+//				// ---------------------------------------------------------
+//				// 5. Find nearby stores
+//				// ---------------------------------------------------------
+//				List<Map<String, Object>> nearby = stores.stream()
+//
+//						.map(store -> {
+//
+//							// -------------------------------------------------
+//							// Location
+//							// -------------------------------------------------
+//							Object locationObject = store.get("location");
+//
+//							if (!(locationObject instanceof Map)) {
+//								return null;
+//							}
+//
+//							@SuppressWarnings("unchecked")
+//							Map<String, Object> location = (Map<String, Object>) locationObject;
+//
+//							Object storeLatitude = location.get("latitude");
+//							Object storeLongitude = location.get("longitude");
+//
+//							if (storeLatitude == null || storeLongitude == null) {
+//								return null;
+//							}
+//
+//							double storeLat;
+//							double storeLon;
+//
+//							try {
+//								storeLat = Double.parseDouble(storeLatitude.toString());
+//
+//								storeLon = Double.parseDouble(storeLongitude.toString());
+//
+//							} catch (NumberFormatException e) {
+//								return null;
+//							}
+//
+//							// -------------------------------------------------
+//							// Calculate distance
+//							// -------------------------------------------------
+//							double distanceKm = haversine(latitude, longitude, storeLat, storeLon);
+//
+//							// -------------------------------------------------
+//							// Filter by radius
+//							// -------------------------------------------------
+//							if (distanceKm >  Double.valueOf(str(data, "ratius"))) {
+//								return null;
+//							}
+//
+//							// -------------------------------------------------
+//							// Result
+//							// -------------------------------------------------
+//							Map<String, Object> result = new LinkedHashMap<>();
+//
+//							result.put("storeId", store.get("storeId"));
+//
+//							// -------------------------------------------------
+//							// Banner images
+//							// -------------------------------------------------
+//							List<Map<String, Object>> bannerImages = getNearbyStoreBanners(store);
+//
+//							result.put("bannerImage", bannerImages);
+//
+//							// -------------------------------------------------
+//							// Distance
+//							// -------------------------------------------------
+//							result.put("distanceKm", Math.round(distanceKm * 100.0) / 100.0);
+//
+//							return result;
+//
+//						})
+//
+//						.filter(Objects::nonNull)
+//
+//						// Nearest store first
+//						.sorted(Comparator.comparingDouble(store -> ((Number) store.get("distanceKm")).doubleValue()))
+//
+//						// Maximum 50 stores
+//						.limit(50)
+//
+//						.collect(Collectors.toList());
+//
+//				// ---------------------------------------------------------
+//				// 6. Success response
+//				// ---------------------------------------------------------
+//				return json(mapper,
+//						Map.of("data", nearby, "count", nearby.size(), "statusCode", "N200", "statusDesc", "Success"));
+//
+//			} catch (Exception e) {
+//
+//				e.printStackTrace();
+//
+//				return json(mapper, Map.of("data", Collections.emptyList(), "count", 0, "statusCode", "N500",
+//						"statusDesc", "Internal server error"));
+//			}
+//		};
+//	}
+//
+//	@SuppressWarnings("unchecked")
+//	private List<Map<String, Object>> getNearbyStoreBanners(Map<String, Object> store) {
+//
+//		List<Map<String, Object>> bannerImageList = new ArrayList<>();
+//
+//		Object bannerObject = store.get("bannerImage");
+//
+//		if (!(bannerObject instanceof List)) {
+//			return bannerImageList;
+//		}
+//
+//		List<Map<String, Object>> banners = (List<Map<String, Object>>) bannerObject;
+//
+//		Object storeIdObject = store.get("storeId");
+//
+//		if (storeIdObject == null) {
+//			return bannerImageList;
+//		}
+//
+//		String storeId = storeIdObject.toString();
+//
+//		String resourcePath = "classpath*:/assets/images/store/" + storeId + "/**/*.*";
+//
+//		PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+//
+//		try {
+//
+//			Resource[] resources = resolver.getResources(resourcePath);
+//
+//			for (Resource resource : resources) {
+//
+//				String fileName = resource.getFilename();
+//
+//				if (fileName == null) {
+//					continue;
+//				}
+//
+//				for (Map<String, Object> banner : banners) {
+//
+//					Object bannerFileName = banner.get("filename");
+//
+//					Object bannerStatus = banner.get("status");
+//
+//					// Match filename
+//					if (bannerFileName == null || !fileName.equals(bannerFileName.toString())) {
+//						continue;
+//					}
+//
+//					// Only ACTIVE banners
+//					if (bannerStatus == null || !"ACTIVE".equalsIgnoreCase(bannerStatus.toString())) {
+//						continue;
+//					}
+//
+//					try {
+//
+//						URL url = resource.getURL();
+//
+//						Map<String, Object> bannerResult = new LinkedHashMap<>();
+//
+//						bannerResult.put("fileName", fileName);
+//
+//						bannerResult.put("filePath", url.getPath());
+//
+//						bannerResult.put("path", banner.get("localPath"));
+//
+//						bannerImageList.add(bannerResult);
+//
+//					} catch (IOException e) {
+//
+//						e.printStackTrace();
+//					}
+//
+//					// Filename already matched
+//					break;
+//				}
+//			}
+//
+//		} catch (IOException e) {
+//
+//			e.printStackTrace();
+//		}
+//
+//		return bannerImageList;
+//	}
+    
 	/****
 	 * commented for stores categories and subcategories as it requires more complex
 	 * data structure and handling, can be implemented in future if needed
@@ -325,11 +684,95 @@ public class NktCatalogueHandler {
     
     
     
+//    public NktOperationHandler getCategoriesByStore() {
+//        return (data, userId, repo, mapper, def) -> {
+//
+//            String storeId = str(data, "storeId");
+//
+//            if (storeId == null || storeId.isBlank()) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N400",
+//                        "statusDesc", "storeId is required"
+//                ));
+//            }
+//
+//            Map<String, Object> store = repo
+//                    .findOne("stores", "storeId", storeId)
+//                    .orElse(null);
+//
+//            if (store == null) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N404",
+//                        "statusDesc", "Store not found"
+//                ));
+//            }
+//            
+//
+//            Map<String, Object> stocks = repo
+//                    .findAll("stores", "storeId", storeId)
+//                    .orElse(null);
+//
+//            if (store == null) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N404",
+//                        "statusDesc", "Store not found"
+//                ));
+//            }
+//
+//            List<Map<String, Object>> storeCategories =
+//                    (List<Map<String, Object>>) store.getOrDefault("categories", new ArrayList<>());
+//
+//            if (storeCategories.isEmpty()) {
+//                return json(mapper, Map.of(
+//                        "data", Collections.emptyList(),
+//                        "count", 0,
+//                        "statusCode", "N200"
+//                ));
+//            }
+//
+//            // Fetch master categories
+//            List<Map<String, Object>> allCategories =
+//                    repo.findAll("categories", Map.of("status", "ACTIVE"));
+//
+//            Map<String, Map<String, Object>> categoryMap = allCategories.stream()
+//                    .collect(Collectors.toMap(c -> c.get("categoryId").toString(), c -> c));
+//
+//            List<Map<String, Object>> result = new ArrayList<>();
+//
+//            for (Map<String, Object> sc : storeCategories) {
+//
+//                String catId = sc.get("categoryId").toString();
+//                Map<String, Object> master = categoryMap.get(catId);
+//
+//                if (master == null) continue;
+//
+//                Map<String, Object> obj = new LinkedHashMap<>();
+//                obj.put("categoryId", catId);
+//                obj.put("name", master.get("name"));
+//                obj.put("categoryName", master.get("categoryName"));
+//
+//                // ✅ icon
+//                obj.put("icon", enrichImages(master.get("icon")));
+//
+//                result.add(obj);
+//            }
+//
+//            return json(mapper, Map.of(
+//                    "data", result,
+//                    "count", result.size(),
+//                    "statusCode", "N200",
+//                    "statusDesc", "Success"
+//            ));
+//        };
+//    }
+    
     public NktOperationHandler getCategoriesByStore() {
+
         return (data, userId, repo, mapper, def) -> {
 
             String storeId = str(data, "storeId");
 
+            // Validate storeId
             if (storeId == null || storeId.isBlank()) {
                 return json(mapper, Map.of(
                         "statusCode", "N400",
@@ -337,6 +780,7 @@ public class NktCatalogueHandler {
                 ));
             }
 
+            // Check store exists
             Map<String, Object> store = repo
                     .findOne("stores", "storeId", storeId)
                     .orElse(null);
@@ -348,39 +792,154 @@ public class NktCatalogueHandler {
                 ));
             }
 
-            List<Map<String, Object>> storeCategories =
-                    (List<Map<String, Object>>) store.getOrDefault("categories", new ArrayList<>());
+            // Get stocks for this store
+            List<Map<String, Object>> stocks =
+                    repo.findAll("stocks", Map.of("storeId", storeId));
 
-            if (storeCategories.isEmpty()) {
+            // No stocks
+            if (stocks == null || stocks.isEmpty()) {
                 return json(mapper, Map.of(
                         "data", Collections.emptyList(),
                         "count", 0,
-                        "statusCode", "N200"
+                        "statusCode", "N200",
+                        "statusDesc", "No stocks found for this store"
                 ));
             }
 
-            // Fetch master categories
+            /*
+             * Get DISTINCT categoryIds from stocks.
+             *
+             * Priority:
+             * 1. Use categoryId from stock if available
+             * 2. If categoryId is missing/blank,
+             *    use subCategoryId and resolve its parentCategoryId
+             */
+
+            // Fetch active subcategories for fallback resolution
+            List<Map<String, Object>> allSubCategories =
+                    repo.findAll(
+                            "sub_categories",
+                            Map.of("status", "ACTIVE")
+                    );
+
+            // Create subcategory lookup map
+            Map<String, Map<String, Object>> subCategoryMap =
+                    allSubCategories.stream()
+                            .filter(sc -> sc.get("subcategoryId") != null)
+                            .collect(Collectors.toMap(
+                                    sc -> sc.get("subcategoryId").toString(),
+                                    sc -> sc,
+                                    (existing, replacement) -> existing,
+                                    LinkedHashMap::new
+                            ));
+
+            // Store distinct category IDs
+            Set<String> categoryIds = new LinkedHashSet<>();
+
+            for (Map<String, Object> stock : stocks) {
+
+                /*
+                 * First priority:
+                 * Check whether categoryId exists directly in stock.
+                 */
+                Object categoryIdObj = stock.get("categoryId");
+
+                if (categoryIdObj != null &&
+                        !categoryIdObj.toString().isBlank()) {
+
+                    categoryIds.add(categoryIdObj.toString());
+                    continue;
+                }
+
+                /*
+                 * Fallback:
+                 * categoryId is missing, so use subCategoryId.
+                 */
+                Object subCategoryIdObj = stock.get("subCategoryId");
+
+                if (subCategoryIdObj == null ||
+                        subCategoryIdObj.toString().isBlank()) {
+
+                    continue;
+                }
+
+                String subCategoryId =
+                        subCategoryIdObj.toString();
+
+                /*
+                 * Find the subcategory using subcategoryId.
+                 */
+                Map<String, Object> subCategory =
+                        subCategoryMap.get(subCategoryId);
+
+                if (subCategory == null) {
+                    continue;
+                }
+
+                /*
+                 * Get parentCategoryId from subcategory.
+                 * parentCategoryId is the categoryId.
+                 */
+                Object parentCategoryIdObj =
+                        subCategory.get("parentCategoryId");
+
+                if (parentCategoryIdObj != null &&
+                        !parentCategoryIdObj.toString().isBlank()) {
+
+                    categoryIds.add(
+                            parentCategoryIdObj.toString()
+                    );
+                }
+            }
+
+            // No category mapped to stocks
+            if (categoryIds.isEmpty()) {
+                return json(mapper, Map.of(
+                        "data", Collections.emptyList(),
+                        "count", 0,
+                        "statusCode", "N200",
+                        "statusDesc", "No categories found for this store"
+                ));
+            }
+
+            // Fetch active master categories
             List<Map<String, Object>> allCategories =
-                    repo.findAll("categories", Map.of("status", "ACTIVE"));
+                    repo.findAll(
+                            "categories",
+                            Map.of("status", "ACTIVE")
+                    );
 
-            Map<String, Map<String, Object>> categoryMap = allCategories.stream()
-                    .collect(Collectors.toMap(c -> c.get("categoryId").toString(), c -> c));
+            // Create category lookup map
+            Map<String, Map<String, Object>> categoryMap =
+                    allCategories.stream()
+                            .filter(c -> c.get("categoryId") != null)
+                            .collect(Collectors.toMap(
+                                    c -> c.get("categoryId").toString(),
+                                    c -> c,
+                                    (existing, replacement) -> existing,
+                                    LinkedHashMap::new
+                            ));
 
-            List<Map<String, Object>> result = new ArrayList<>();
+            // Build response
+            List<Map<String, Object>> result =
+                    new ArrayList<>();
 
-            for (Map<String, Object> sc : storeCategories) {
+            for (String catId : categoryIds) {
 
-                String catId = sc.get("categoryId").toString();
-                Map<String, Object> master = categoryMap.get(catId);
+                Map<String, Object> master =
+                        categoryMap.get(catId);
 
-                if (master == null) continue;
+                // Category doesn't exist / inactive in master
+                if (master == null) {
+                    continue;
+                }
 
-                Map<String, Object> obj = new LinkedHashMap<>();
+                Map<String, Object> obj =
+                        new LinkedHashMap<>();
+
                 obj.put("categoryId", catId);
                 obj.put("name", master.get("name"));
                 obj.put("categoryName", master.get("categoryName"));
-
-                // ✅ icon
                 obj.put("icon", enrichImages(master.get("icon")));
 
                 result.add(obj);
@@ -762,25 +1321,62 @@ public class NktCatalogueHandler {
 
     /* ── LOCATION_GLOBAL_SEARCH ─────────────────────────────────────────── */
     public NktOperationHandler globalSearch() {
+
         return (data, userId, repo, mapper, def) -> {
+
             String q = str(data, "q");
             String cat = str(data, "categoryId");
-            String lc  = q != null ? q.toLowerCase() : "";
+            String lc = q != null ? q.toLowerCase() : "";
 
             List<Map<String, Object>> stores = repo.findAll("stores", Map.of("status", "ACTIVE"))
                     .stream()
-                    .filter(s -> s.get("name") != null && s.get("name").toString().toLowerCase().contains(lc))
+                    .filter(s -> s.get("storeName") != null &&
+                            s.get("storeName").toString().toLowerCase().contains(lc))
                     .filter(s -> cat == null || cat.equals(s.get("categoryId")))
                     .collect(Collectors.toList());
 
-            List<Map<String, Object>> items = repo.findAll("stockItems", Map.of("status", "ACTIVE"))
+            // StoreId -> StoreName lookup
+            Map<String, String> storeNameMap = repo.findAll("stores", Map.of("status", "ACTIVE"))
                     .stream()
-                    .filter(i -> i.get("name") != null && i.get("name").toString().toLowerCase().contains(lc))
+                    .filter(s -> s.get("storeId") != null && s.get("storeName") != null)
+                    .collect(Collectors.toMap(
+                            s -> s.get("storeId").toString(),
+                            s -> s.get("storeName").toString(),
+                            (existing, replacement) -> existing
+                    ));
+
+            List<Map<String, Object>> items = repo.findAll("stocks", Map.of("status", "ACTIVE"))
+                    .stream()
+                    .filter(i -> i.get("stockName") != null &&
+                            i.get("stockName").toString().toLowerCase().contains(lc))
+                    .map(i -> {
+                        Map<String, Object> item = new HashMap<>(i);
+
+                        String storeId = i.get("storeId") != null
+                                ? i.get("storeId").toString()
+                                : null;
+
+                        item.put("storeName",
+                                storeId != null
+                                        ? storeNameMap.get(storeId)
+                                        : null);
+
+                        return item;
+                    })
                     .collect(Collectors.toList());
 
-            return json(mapper, Map.of(
-                    "query", q, "stores", stores, "items", items,
-                    "totalResults", stores.size() + items.size()));
+            Map<String, Object> searchResult = new HashMap<>();
+            searchResult.put("query", q);
+            searchResult.put("stores", stores);
+            searchResult.put("items", items);
+            searchResult.put("totalResults", stores.size() + items.size());
+
+            return json(
+                    mapper,
+                    Map.of(
+                            "data", searchResult
+                    )
+            );
         };
     }
     

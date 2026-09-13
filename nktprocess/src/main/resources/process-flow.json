@@ -168,6 +168,17 @@
 			]
 		},
 		{
+			"Code": "nkt.discover.nearby_banner",
+			"Collection": "banner",
+			"Operation": "CUSTOM",
+			"HandlerKey": "DISCOVER_NEARBY_BANNER",
+			"Protected": false,
+			"RequiredFields": [
+				"latitude",
+				"longitude"
+			]
+		},
+		{
 			"Code": "nkt.discover.typesofstore",
 			"Collection": "type_of_store",
 			"Operation": "CUSTOM",
