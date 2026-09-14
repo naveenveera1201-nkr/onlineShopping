@@ -1111,7 +1111,7 @@ public class NktCatalogueHandler {
 
             List<Map<String, Object>> products = repo.findAll("stocks", filter);
 
-            products.forEach(p -> enrichProductImage(p.get("image")));
+//            products.forEach(p -> enrichProductImage(p.get("image")));
 
             return json(mapper, Map.of(
                     "data", products,
@@ -1331,62 +1331,198 @@ public class NktCatalogueHandler {
 
     /* ── LOCATION_GLOBAL_SEARCH ─────────────────────────────────────────── */
     public NktOperationHandler globalSearch() {
-
         return (data, userId, repo, mapper, def) -> {
+            try {
 
-            String q = str(data, "q");
-            String cat = str(data, "categoryId");
-            String lc = q != null ? q.toLowerCase() : "";
+                // Read search parameters
+                String q = str(data, "q");
+                String categoryId = str(data, "categoryId");
+                String storeId = str(data, "storeId");
+                String searchText = q != null ? q.trim().toLowerCase() : "";
 
-            List<Map<String, Object>> stores = repo.findAll("stores", Map.of("status", "ACTIVE"))
-                    .stream()
-                    .filter(s -> s.get("storeName") != null &&
-                            s.get("storeName").toString().toLowerCase().contains(lc))
-                    .filter(s -> cat == null || cat.equals(s.get("categoryId")))
-                    .collect(Collectors.toList());
+                // Validate location
+                if (str(data, "latitude") == null || str(data, "longitude") == null) {
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Latitude and Longitude are required"));
+                }
 
-            // StoreId -> StoreName lookup
-            Map<String, String> storeNameMap = repo.findAll("stores", Map.of("status", "ACTIVE"))
-                    .stream()
-                    .filter(s -> s.get("storeId") != null && s.get("storeName") != null)
-                    .collect(Collectors.toMap(
-                            s -> s.get("storeId").toString(),
-                            s -> s.get("storeName").toString(),
-                            (existing, replacement) -> existing
-                    ));
+                double lat, lon, radius;
+                try {
+                    lat = Double.parseDouble(str(data, "latitude"));
+                    lon = Double.parseDouble(str(data, "longitude"));
+                    radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
+                } catch (Exception e) {
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Invalid latitude/longitude/radius format"));
+                }
 
-            List<Map<String, Object>> items = repo.findAll("stocks", Map.of("status", "ACTIVE"))
-                    .stream()
-                    .filter(i -> i.get("stockName") != null &&
-                            i.get("stockName").toString().toLowerCase().contains(lc))
-                    .map(i -> {
-                        Map<String, Object> item = new HashMap<>(i);
+                if (lat < -90 || lat > 90)
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Latitude must be between -90 and 90"));
 
-                        String storeId = i.get("storeId") != null
-                                ? i.get("storeId").toString()
-                                : null;
+                if (lon < -180 || lon > 180)
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Longitude must be between -180 and 180"));
 
-                        item.put("storeName",
-                                storeId != null
-                                        ? storeNameMap.get(storeId)
-                                        : null);
+                if (radius <= 0)
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Radius must be greater than 0"));
 
-                        return item;
-                    })
-                    .collect(Collectors.toList());
+                // Get active stores
+                List<Map<String, Object>> allStores = repo.findAll("stores", Map.of("status", "ACTIVE"));
 
-            Map<String, Object> searchResult = new HashMap<>();
-            searchResult.put("query", q);
-            searchResult.put("stores", stores);
-            searchResult.put("items", items);
-            searchResult.put("totalResults", stores.size() + items.size());
+                // Filter stores by storeId, category and radius
+                List<Map<String, Object>> eligibleStores = allStores.stream()
+                        .filter(store -> {
+                            if (storeId == null || storeId.isBlank()) return true;
+                            Object currentStoreId = store.get("storeId");
+                            return currentStoreId != null && storeId.trim().equalsIgnoreCase(currentStoreId.toString().trim());
+                        })
+                        .filter(store -> {
+                            if (categoryId == null || categoryId.isBlank()) return true;
+                            Object categoriesObj = store.get("categories");
+                            if (!(categoriesObj instanceof List)) return false;
 
-            return json(
-                    mapper,
-                    Map.of(
-                            "data", searchResult
-                    )
-            );
+                            @SuppressWarnings("unchecked")
+                            List<Map<String, Object>> categories = (List<Map<String, Object>>) categoriesObj;
+
+                            return categories.stream().anyMatch(category ->
+                                    categoryId.trim().equalsIgnoreCase(String.valueOf(category.get("categoryId")).trim()));
+                        })
+                        .map(store -> {
+                            Object locationObj = store.get("location");
+                            if (!(locationObj instanceof Map)) return null;
+
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> location = (Map<String, Object>) locationObj;
+
+                            Object sLat = location.get("latitude");
+                            Object sLon = location.get("longitude");
+                            if (sLat == null || sLon == null) return null;
+
+                            try {
+                                double distance = haversine(
+                                        lat,
+                                        lon,
+                                        Double.parseDouble(sLat.toString()),
+                                        Double.parseDouble(sLon.toString())
+                                );
+
+                                if (distance > radius) return null;
+
+                                Map<String, Object> result = new LinkedHashMap<>(store);
+                                result.put("distanceKm", distance);
+                                return result;
+                            } catch (Exception e) {
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.comparingDouble(s -> ((Number) s.get("distanceKm")).doubleValue()))
+                        .limit(50)
+                        .collect(Collectors.toList());
+
+                // Get eligible store IDs
+                Set<String> eligibleStoreIds = eligibleStores.stream()
+                        .map(store -> store.get("storeId"))
+                        .filter(Objects::nonNull)
+                        .map(id -> id.toString().trim().toUpperCase())
+                        .collect(Collectors.toSet());
+
+                // Create store ID to store name mapping
+                Map<String, String> storeNameMap = eligibleStores.stream()
+                        .filter(store -> store.get("storeId") != null && store.get("storeName") != null)
+                        .collect(Collectors.toMap(
+                                store -> store.get("storeId").toString().trim().toUpperCase(),
+                                store -> store.get("storeName").toString(),
+                                (a, b) -> a
+                        ));
+
+                // Find stores matching the query
+                List<Map<String, Object>> matchingStores = eligibleStores.stream()
+                        .filter(store -> {
+                            if (searchText.isBlank()) return true;
+                            Object storeName = store.get("storeName");
+                            return storeName != null && storeName.toString().trim().toLowerCase().contains(searchText);
+                        })
+                        .collect(Collectors.toList());
+
+                // Find products matching the query from eligible stores
+                List<Map<String, Object>> items = repo.findAll("stocks", Map.of("status", "ACTIVE"))
+                        .stream()
+                        .filter(item -> {
+                            Object itemStoreId = item.get("storeId");
+                            return itemStoreId != null &&
+                                    eligibleStoreIds.contains(itemStoreId.toString().trim().toUpperCase());
+                        })
+                        .filter(item -> {
+                            if (searchText.isBlank()) return true;
+                            Object stockName = item.get("stockName");
+                            return stockName != null && stockName.toString().trim().toLowerCase().contains(searchText);
+                        })
+                        .filter(item -> {
+                            if (categoryId == null || categoryId.isBlank()) return true;
+
+                            Object itemCategoryId = item.get("categoryId");
+                            if (itemCategoryId != null)
+                                return categoryId.trim().equalsIgnoreCase(itemCategoryId.toString().trim());
+
+                            Object subCategoryObj = item.get("subCategoryId");
+                            Object itemStoreId = item.get("storeId");
+                            if (subCategoryObj == null || itemStoreId == null) return false;
+
+                            String subCategoryId = subCategoryObj.toString().trim();
+                            String normalizedStoreId = itemStoreId.toString().trim().toUpperCase();
+
+                            Map<String, Object> store = eligibleStores.stream()
+                                    .filter(s -> s.get("storeId") != null &&
+                                            normalizedStoreId.equals(s.get("storeId").toString().trim().toUpperCase()))
+                                    .findFirst()
+                                    .orElse(null);
+
+                            if (store == null || !(store.get("categories") instanceof List)) return false;
+
+                            @SuppressWarnings("unchecked")
+                            List<Map<String, Object>> categories =
+                                    (List<Map<String, Object>>) store.get("categories");
+
+                            return categories.stream()
+                                    .filter(category -> categoryId.trim().equalsIgnoreCase(
+                                            String.valueOf(category.get("categoryId")).trim()))
+                                    .anyMatch(category -> {
+                                        Object subCategoriesObj = category.get("subCategories");
+                                        if (!(subCategoriesObj instanceof List)) return false;
+
+                                        @SuppressWarnings("unchecked")
+                                        List<Map<String, Object>> subCategories =
+                                                (List<Map<String, Object>>) subCategoriesObj;
+
+                                        return subCategories.stream()
+                                                .anyMatch(sub -> subCategoryId.equalsIgnoreCase(
+                                                        String.valueOf(sub.get("subcategoryId")).trim()));
+                                    });
+                        })
+                        .map(item -> {
+                            Map<String, Object> result = new LinkedHashMap<>(item);
+                            Object itemStoreId = item.get("storeId");
+
+                            if (itemStoreId != null)
+                                result.put("storeName",
+                                        storeNameMap.get(itemStoreId.toString().trim().toUpperCase()));
+
+                            return result;
+                        })
+                        .collect(Collectors.toList());
+
+                // Build search response
+                Map<String, Object> searchResult = new LinkedHashMap<>();
+                searchResult.put("query", q);
+                searchResult.put("stores", matchingStores);
+                searchResult.put("items", items);
+                searchResult.put("totalResults", matchingStores.size() + items.size());
+
+                // Return response
+                return json(mapper, Map.of("data", searchResult));
+
+            } catch (Exception e) {
+                log.error("Global search failed", e);
+                return json(mapper, Map.of("statusCode", "N500", "statusDesc", "Global search failed"));
+            }
         };
     }
     

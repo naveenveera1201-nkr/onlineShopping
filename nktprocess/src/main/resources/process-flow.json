@@ -843,9 +843,11 @@
 			"Operation": "CUSTOM",
 			"HandlerKey": "STORE_ORDER_LIST",
 			"Protected": true,
+			"UserIdField": "userId",
 			"allowedRoles": [
 				"customer",
-				"business"
+				"business",
+				"employee"
 			]
 		},
 		{
@@ -1317,6 +1319,16 @@
 			"allowedRoles": [
 				"customer",
 				"business"
+			]
+		},
+		{
+			"Code": " nkt.location.global_search",
+			"Collection": "stocks",
+			"Operation": "CUSTOM",
+			"HandlerKey": "LOCATION_GLOBAL_SEARCH",
+			"Protected": true,
+			"allowedRoles": [
+				"customer"
 			]
 		}
 	],

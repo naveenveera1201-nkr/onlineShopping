@@ -12,6 +12,7 @@ apis:
         type: JWT
         roles:
         - business
+        - employee
       authorization:
         enabled: true
       rateLimit:

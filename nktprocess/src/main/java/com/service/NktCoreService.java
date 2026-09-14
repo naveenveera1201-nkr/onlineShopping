@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -207,11 +208,22 @@ public class NktCoreService {
         // Strip the token from data so it never reaches handlers / DB
         data.remove("token");
 
-        // 4 ── Inject userId into data under the configured field name ─────────
-        if (userId != null && def.getUserIdField() != null) {
-            data.put("userId", userId);
-            data.put("userType", userType);
-        }
+		// 4 ── Inject userId into data under the configured field name ─────────
+		if (userId != null && def.getUserIdField() != null) {
+			data.put("userId", userId);
+			data.put("userType", userType);
+			if (userType.equalsIgnoreCase("employee")) {
+				Optional<Map<String, Object>> storeStaff = repo.findOne("store_staff_employees", "employeeId", userId);
+				if (storeStaff.isPresent()) {
+					String storeId = (String) storeStaff.get().get("storeId");
+					Optional<Map<String, Object>> businessUser = repo.findOne("stores", "storeId", storeId);
+					if (businessUser.isPresent()) {
+						data.put("userId", (String) businessUser.get().get("userId"));
+						userId = (String) businessUser.get().get("userId");
+					}
+				}
+			}
+		}
 
         // 5 ── Dispatch to operation ───────────────────────────────────────────
         return switch (def.getOperation()) {
