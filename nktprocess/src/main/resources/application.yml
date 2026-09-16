@@ -42,3 +42,16 @@ aws:
   region: 132
   s3:
     bucketName: 23QWW
+
+# ── Firebase Cloud Messaging ─────────────────────────────────────────────────
+# Local dev  : set FIREBASE_CREDENTIALS_PATH to the absolute path of your
+#              service-account JSON (never commit that file).
+# Production : set FIREBASE_CREDENTIALS_JSON to the service-account JSON,
+#              base64-encoded, as a Render/host environment variable.
+# Neither set: falls back to GOOGLE_APPLICATION_CREDENTIALS / ADC discovery.
+# See docs/FCM_INTEGRATION.md for full setup instructions.
+firebase:
+  enabled: ${FIREBASE_ENABLED:false}
+  project-id: ${FIREBASE_PROJECT_ID:}
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
+  credentials-json: ${FIREBASE_CREDENTIALS_JSON:}

@@ -2,6 +2,8 @@ package com.service.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.repository.NktDynamicRepository;
+import com.service.OrderNotificationService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang3.RandomStringUtils;
@@ -22,10 +24,18 @@ import java.util.stream.Collectors;
  *       WISHLIST_ADD, WISHLIST_REMOVE,
  *       STORE_ORDER_LIST, STORE_ORDER_ACCEPT, STORE_ORDER_REJECT,
  *       STORE_ORDER_DISPATCH, STORE_ORDER_DELIVER
+ *
+ * FCM integration: order-lifecycle push notifications are delegated to
+ * {@link OrderNotificationService} — see placeOrder() and
+ * updateOrderStatus() below. A notification failure never breaks the order
+ * API response (OrderNotificationService swallows and logs its own errors).
  */
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class NktOrderHandler {
+
+    private final OrderNotificationService orderNotificationService;
 
     private String str(Map<String, Object> d, String k) {
         Object v = d.get(k); return v == null ? null : v.toString();
@@ -253,18 +263,35 @@ public class NktOrderHandler {
 							Map.of("statusCode", "N400", "statusDesc", "Insufficient stock for " + selectedUnit));
 				}
 
-				double price = Double.parseDouble(selectedUnitObj.get("price").toString());
+				double price = Double.parseDouble(
+				        selectedUnitObj.get("price").toString()
+				);
 
-				double itemTotal = price * qty;
+				double discountPercentage = 0.0;
+
+				if (selectedUnitObj.get("discountPercentage") != null
+						&& !selectedUnitObj.get("discountPercentage").toString().isBlank()) {
+					discountPercentage = Double.parseDouble(selectedUnitObj.get("discountPercentage").toString());
+				}
+
+				double discountAmount = price * discountPercentage / 100;
+				double discountedPrice = price - discountAmount;
+				
+//				double price = Double.parseDouble(selectedUnitObj.get("price").toString());
+
+				double itemTotal = discountedPrice * qty;
 
 				Map<String, Object> oi = new LinkedHashMap<>();
 				oi.put("stockId", stockId);
 				oi.put("stockName", stock.get("stockName"));
 				oi.put("name", stock.get("name"));
 				oi.put("qty", qty);
-				oi.put("price", price);
+				oi.put("price", discountedPrice);
 				oi.put("total", itemTotal);
 				oi.put("unit", selectedUnitObj.get("qty"));
+				oi.put("actualPrice", price);
+				oi.put("discountAmount", discountAmount);
+				oi.put("discountPercentage", discountPercentage);
 
 				orderItems.add(oi);
 				total += itemTotal;
@@ -314,6 +341,9 @@ public class NktOrderHandler {
             ));
 
             Map<String, Object> savedOrder = repo.insert("orders", order);
+
+            // ✅ FCM: notify customer (confirmation) + store staff/owner (new order alert)
+            orderNotificationService.notifyOrderPlaced(savedOrder);
 
             return json(mapper, Map.of(
                     "data", savedOrder,
@@ -1091,6 +1121,11 @@ public class NktOrderHandler {
 
         // ✅ return updated response directly (avoid extra DB hit if possible)
         order.putAll(updates);
+
+        // ✅ FCM: notify the customer of the status change (accepted / partially
+        // accepted / dispatched / delivered / cancelled). Covers ACCEPT, REJECT,
+        // DISPATCH and DELIVER in one place since they all funnel through here.
+        orderNotificationService.notifyOrderStatusChanged(order, newStatus);
 
         return json(mapper, Map.of(
                 "data", order,

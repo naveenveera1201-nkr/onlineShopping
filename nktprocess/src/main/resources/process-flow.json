@@ -666,6 +666,67 @@
 			]
 		},
 		{
+			"Code": "nkt.notification.fcm.register_device",
+			"Collection": "user_devices",
+			"Operation": "CUSTOM",
+			"HandlerKey": "FCM_REGISTER_DEVICE",
+			"Protected": true,
+			"RequiredFields": [
+				"deviceId",
+				"fcmToken",
+				"platform"
+			],
+			"allowedRoles": [
+				"customer",
+				"business",
+				"employee"
+			]
+		},
+		{
+			"Code": "nkt.notification.fcm.send",
+			"Collection": "user_devices",
+			"Operation": "CUSTOM",
+			"HandlerKey": "FCM_SEND_NOTIFICATION",
+			"Protected": true,
+			"RequiredFields": [
+				"targetUserId",
+				"title",
+				"body"
+			],
+			"allowedRoles": [
+				"business",
+				"employee"
+			]
+		},
+		{
+			"Code": "nkt.notification.fcm.send_group",
+			"Collection": "user_devices",
+			"Operation": "CUSTOM",
+			"HandlerKey": "FCM_SEND_GROUP_NOTIFICATION",
+			"Protected": true,
+			"RequiredFields": [
+				"groupType",
+				"title",
+				"body"
+			],
+			"allowedRoles": [
+				"business"
+			]
+		},
+		{
+			"Code": "nkt.notification.fcm.send_batch",
+			"Collection": "user_devices",
+			"Operation": "CUSTOM",
+			"HandlerKey": "FCM_SEND_BATCH_NOTIFICATION",
+			"Protected": true,
+			"RequiredFields": [
+				"messages"
+			],
+			"allowedRoles": [
+				"business"
+			]
+		},
+		{
 			"Code": "nkt.location.reverse_geocode",
 			"Collection": "",
 			"Operation": "CUSTOM",

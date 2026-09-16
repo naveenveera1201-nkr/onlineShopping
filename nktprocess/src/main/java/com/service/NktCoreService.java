@@ -31,6 +31,7 @@ import com.repository.NktDynamicRepository;
 import com.security.JwtTokenProvider;
 import com.service.handlers.NktAuthHandler;
 import com.service.handlers.NktCatalogueHandler;
+import com.service.handlers.NktNotificationHandler;
 import com.service.handlers.NktOperationHandler;
 import com.service.handlers.NktOrderHandler;
 import com.service.handlers.NktPaymentHandler;
@@ -82,6 +83,7 @@ public class NktCoreService {
     private final NktCatalogueHandler catalogueHandler;
     private final NktOrderHandler     orderHandler;
     private final NktPaymentHandler   paymentHandler;
+    private final NktNotificationHandler notificationHandler;
 
     /** Runtime handler registry: HandlerKey → NktOperationHandler */
     private final Map<String, NktOperationHandler> handlers = new HashMap<>();
@@ -172,6 +174,12 @@ public class NktCoreService {
         // Payments
         handlers.put("PAYMENT_INITIATE", paymentHandler.initiatePayment());
         handlers.put("PAYMENT_WEBHOOK",  paymentHandler.paymentWebhook());
+
+        // Firebase Cloud Messaging (push notifications)
+        handlers.put("FCM_REGISTER_DEVICE",        notificationHandler.registerDevice());
+        handlers.put("FCM_SEND_NOTIFICATION",      notificationHandler.sendNotification());
+        handlers.put("FCM_SEND_GROUP_NOTIFICATION",notificationHandler.sendGroupNotification());
+        handlers.put("FCM_SEND_BATCH_NOTIFICATION",notificationHandler.sendBatchNotification());
 
         log.info("NktCoreService: {} operation handlers registered", handlers.size());
     }

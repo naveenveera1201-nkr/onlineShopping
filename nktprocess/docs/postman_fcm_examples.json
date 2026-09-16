@@ -1,0 +1,113 @@
+{
+  "info": {
+    "name": "NKT - FCM Push Notifications",
+    "description": "Register devices and send Firebase Cloud Messaging push notifications through the existing single /data process engine endpoint.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8070" },
+    { "key": "accessToken", "value": "PASTE_JWT_ACCESS_TOKEN_HERE" }
+  ],
+  "item": [
+    {
+      "name": "FCM_REGISTER_DEVICE",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "code", "value": "nkt.notification.fcm.register_device" },
+            {
+              "key": "data",
+              "value": "{\"deviceId\":\"DEVICE_001\",\"fcmToken\":\"REPLACE_WITH_REAL_FCM_TOKEN\",\"platform\":\"ANDROID\",\"appVersion\":\"1.0.0\",\"token\":\"{{accessToken}}\"}"
+            }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/data", "host": ["{{baseUrl}}"], "path": ["data"] }
+      }
+    },
+    {
+      "name": "FCM_SEND_NOTIFICATION (single user)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "code", "value": "nkt.notification.fcm.send" },
+            {
+              "key": "data",
+              "value": "{\"targetUserId\":\"USER_001\",\"title\":\"Order Confirmed\",\"body\":\"Your order ORD10001 has been confirmed\",\"notificationType\":\"ORDER\",\"orderId\":\"ORD10001\",\"storeId\":\"ST011\",\"screen\":\"order_details\",\"token\":\"{{accessToken}}\"}"
+            }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/data", "host": ["{{baseUrl}}"], "path": ["data"] }
+      }
+    },
+    {
+      "name": "FCM_SEND_GROUP_NOTIFICATION (STORE_STAFF)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "code", "value": "nkt.notification.fcm.send_group" },
+            {
+              "key": "data",
+              "value": "{\"groupType\":\"STORE_STAFF\",\"storeId\":\"ST011\",\"title\":\"New Order\",\"body\":\"New order ORD10001 received\",\"notificationType\":\"ORDER\",\"orderId\":\"ORD10001\",\"screen\":\"order_details\",\"token\":\"{{accessToken}}\"}"
+            }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/data", "host": ["{{baseUrl}}"], "path": ["data"] }
+      }
+    },
+    {
+      "name": "FCM_SEND_GROUP_NOTIFICATION (CUSTOMERS broadcast)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "code", "value": "nkt.notification.fcm.send_group" },
+            {
+              "key": "data",
+              "value": "{\"groupType\":\"CUSTOMERS\",\"title\":\"Special Offer\",\"body\":\"20% discount available today\",\"notificationType\":\"PROMOTION\",\"screen\":\"offers\",\"token\":\"{{accessToken}}\"}"
+            }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/data", "host": ["{{baseUrl}}"], "path": ["data"] }
+      }
+    },
+    {
+      "name": "FCM_SEND_BATCH_NOTIFICATION (per-employee)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "code", "value": "nkt.notification.fcm.send_batch" },
+            {
+              "key": "data",
+              "value": "{\"messages\":[{\"targetUserId\":\"EMP001\",\"title\":\"Order Assigned\",\"body\":\"Order ORD1001 assigned to you\",\"notificationType\":\"ORDER\",\"orderId\":\"ORD1001\",\"storeId\":\"ST011\",\"screen\":\"order_details\"},{\"targetUserId\":\"EMP002\",\"title\":\"Order Assigned\",\"body\":\"Order ORD1002 assigned to you\",\"notificationType\":\"ORDER\",\"orderId\":\"ORD1002\",\"storeId\":\"ST011\",\"screen\":\"order_details\"}],\"token\":\"{{accessToken}}\"}"
+            }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/data", "host": ["{{baseUrl}}"], "path": ["data"] }
+      }
+    }
+  ]
+}

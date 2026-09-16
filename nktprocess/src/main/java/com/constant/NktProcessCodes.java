@@ -107,8 +107,18 @@ public final class NktProcessCodes {
 	public static final String WISHLIST_REMOVE = "nkt.wishlist.remove";
 
 	// ── NOTIFICATION ──────────────────────────────────────────────────────────
-	/** API 33 – Register device for push notifications */
+	/** API 33 – Register device for push notifications (legacy deviceTokens collection) */
 	public static final String NOTIFICATION_REGISTER_DEVICE = "nkt.notification.register_device";
+
+	// ── FIREBASE CLOUD MESSAGING (user_devices collection) ─────────────────────
+	/** Register/update a Firebase device token for the authenticated user */
+	public static final String FCM_REGISTER_DEVICE = "nkt.notification.fcm.register_device";
+	/** Send a push notification to a single target user */
+	public static final String FCM_SEND_NOTIFICATION = "nkt.notification.fcm.send";
+	/** Send the same push notification to a group (CUSTOMERS / STORE_STAFF / STORE_OWNER / STORE) */
+	public static final String FCM_SEND_GROUP_NOTIFICATION = "nkt.notification.fcm.send_group";
+	/** Send a different push message per target user in one call */
+	public static final String FCM_SEND_BATCH_NOTIFICATION = "nkt.notification.fcm.send_batch";
 
 	// ── LOCATION ──────────────────────────────────────────────────────────────
 	/** API 34 – Reverse geocode */

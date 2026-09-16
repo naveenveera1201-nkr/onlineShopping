@@ -185,6 +185,11 @@
 			<artifactId>s3</artifactId>
 			<version>2.25.15</version> <!-- Use the latest version available -->
 		</dependency>
+		<dependency>
+			<groupId>com.google.firebase</groupId>
+			<artifactId>firebase-admin</artifactId>
+			<version>9.10.0</version>
+		</dependency>
 	</dependencies>
 	<build>
 	 <finalName>nktprocess</finalName>
