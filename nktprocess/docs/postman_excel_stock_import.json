@@ -1,0 +1,58 @@
+{
+  "info": {
+    "name": "NKT - Excel Stock Master Import",
+    "description": "Bulk import Categories/Sub_Categories/Stocks/Stocks_units from an .xlsx workbook.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8070" },
+    { "key": "accessToken", "value": "PASTE_BUSINESS_JWT_ACCESS_TOKEN_HERE" }
+  ],
+  "item": [
+    {
+      "name": "EXCEL_STOCK_MASTER_IMPORT",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "Store_maintenance_30-08-2026_java_code.xlsx"
+            },
+            {
+              "key": "code",
+              "type": "text",
+              "value": "nkt.inventory.excel_import"
+            },
+            {
+              "key": "data",
+              "type": "text",
+              "value": "{\"token\":\"{{accessToken}}\"}"
+            }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/data/upload", "host": ["{{baseUrl}}"], "path": ["data", "upload"] }
+      }
+    },
+    {
+      "name": "EXCEL_STOCK_MASTER_IMPORT - missing file (expect N400 EXCEL_FILE_REQUIRED)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "code", "value": "nkt.inventory.excel_import" },
+            { "key": "data", "value": "{\"token\":\"{{accessToken}}\"}" }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/data", "host": ["{{baseUrl}}"], "path": ["data"] }
+      }
+    }
+  ]
+}

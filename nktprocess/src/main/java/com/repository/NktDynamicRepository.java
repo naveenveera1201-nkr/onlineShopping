@@ -6,11 +6,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
@@ -19,6 +21,8 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
+
+import com.mongodb.bulk.BulkWriteResult;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -103,7 +107,7 @@ public class NktDynamicRepository {
         return mongo.find(q, Document.class, collection)
                 .stream().map(this::toMap).collect(Collectors.toList());
     }
-    
+
 	/** Find with sort, skip, and limit. */
 	public List<Map<String, Object>> findAllSortedTwo(String collection, Map<String, Object> criteria,
 			String sortField1, String sortField2, Sort.Direction direction, int skip, int limit) {
@@ -193,7 +197,7 @@ public class NktDynamicRepository {
     public long count(String collection, Map<String, Object> criteria) {
         return mongo.count(buildQuery(criteria), Document.class, collection);
     }
-    
+
 	public long countOf(String collection, Query query) {
 		return mongo.count(query, collection);
 	}
@@ -234,6 +238,57 @@ public class NktDynamicRepository {
         mongo.remove(buildQuery(criteria), Document.class, collection);
     }
 
+    // ─── BULK UPSERT ─────────────────────────────────────────────────────────
+
+    /**
+     * Insert-or-update a batch of documents in a single round trip, keyed by a
+     * business field (not {@code _id}) — added for the Excel stock-master
+     * import, which needs to write ~2,700 stocks without one query per row.
+     *
+     * For each document, {@code keyField} identifies the matching document
+     * (e.g. {@code "stockId"}). Every other top-level field is applied with
+     * {@code $set} — so on an update the document is fully replaced field by
+     * field (including e.g. a nested {@code unit[]} array, satisfying "replace
+     * the unit list with the latest Excel data" rather than merging/appending).
+     * Fields named in {@code setOnInsertFields} (typically {@code "createdAt"})
+     * are instead applied with {@code $setOnInsert}, so they are written once
+     * on a brand-new document and left untouched on an update — exactly the
+     * "preserve createdAt, always refresh updatedAt" rule the import needs.
+     * {@code _id} is preserved automatically by Mongo's own upsert semantics;
+     * callers never need to look up or pass it.
+     *
+     * This is the smallest capability the existing repository was missing: an
+     * atomic, batched upsert-by-business-key. Everything else about this
+     * class (model-less {@code Map<String,Object>} documents, per-call
+     * collection name) is unchanged.
+     */
+    public BulkWriteResult bulkUpsertByField(String collection, String keyField,
+                                              List<Map<String, Object>> documents,
+                                              Set<String> setOnInsertFields) {
+        if (documents == null || documents.isEmpty()) {
+            return null;
+        }
+
+        BulkOperations ops = mongo.bulkOps(BulkOperations.BulkMode.UNORDERED, collection);
+
+        for (Map<String, Object> doc : documents) {
+            Object keyValue = doc.get(keyField);
+            Query query = Query.query(Criteria.where(keyField).is(keyValue));
+
+            Update update = new Update();
+            for (Map.Entry<String, Object> entry : sanitise(doc).entrySet()) {
+                if (setOnInsertFields != null && setOnInsertFields.contains(entry.getKey())) {
+                    update.setOnInsert(entry.getKey(), entry.getValue());
+                } else {
+                    update.set(entry.getKey(), entry.getValue());
+                }
+            }
+            ops.upsert(query, update);
+        }
+
+        return ops.execute();
+    }
+
     // ─── RAW ACCESS ──────────────────────────────────────────────────────────
 
     public MongoTemplate template() { return mongo; }
@@ -247,7 +302,7 @@ public class NktDynamicRepository {
 //        criteria.forEach((field, value) -> parts.add(Criteria.where(field).is(value)));
 //        return Query.query(c.andOperator(parts.toArray(new Criteria[0])));
 //    }
-    
+
     @SuppressWarnings("unchecked")
     private Query buildQuery(Map<String, Object> criteria) {
 

@@ -727,6 +727,17 @@
 			]
 		},
 		{
+			"Code": "nkt.inventory.excel_import",
+			"Collection": "stocks",
+			"Operation": "CUSTOM",
+			"HandlerKey": "EXCEL_STOCK_MASTER_IMPORT",
+			"Protected": true,
+			"RequiredFields": [],
+			"allowedRoles": [
+				"business"
+			]
+		},
+		{
 			"Code": "nkt.location.reverse_geocode",
 			"Collection": "",
 			"Operation": "CUSTOM",

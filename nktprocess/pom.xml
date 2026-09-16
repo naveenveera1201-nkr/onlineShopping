@@ -19,6 +19,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<mongodb.driver.version>4.11.1</mongodb.driver.version>
 		<jjwt.version>0.12.5</jjwt.version>
+		<poi.version>5.3.0</poi.version>
 	</properties>
 	<dependencies>
 		<!--<dependency>
@@ -118,7 +119,7 @@
 			<artifactId>spring-cloud-starter-openfeign</artifactId>
 			<version>5.0.0</version>
 		</dependency>
-		
+
 		<!-- <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver-sync</artifactId>
@@ -189,6 +190,16 @@
 			<groupId>com.google.firebase</groupId>
 			<artifactId>firebase-admin</artifactId>
 			<version>9.10.0</version>
+		</dependency>
+
+		<!-- ── Apache POI (Excel .xlsx reading) ─────────────────────────────
+		     Added for EXCEL_STOCK_MASTER_IMPORT. poi-ooxml pulls in poi (core)
+		     and poi-ooxml-lite/xmlbeans transitively — no other Excel-reading
+		     library existed anywhere in this project before this feature. -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>${poi.version}</version>
 		</dependency>
 	</dependencies>
 	<build>

@@ -31,6 +31,7 @@ import com.repository.NktDynamicRepository;
 import com.security.JwtTokenProvider;
 import com.service.handlers.NktAuthHandler;
 import com.service.handlers.NktCatalogueHandler;
+import com.service.handlers.NktInventoryImportHandler;
 import com.service.handlers.NktNotificationHandler;
 import com.service.handlers.NktOperationHandler;
 import com.service.handlers.NktOrderHandler;
@@ -68,7 +69,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class NktCoreService {
-	
+
 	@Value("${image.basepath}")
 	private String basePath;
 
@@ -84,6 +85,7 @@ public class NktCoreService {
     private final NktOrderHandler     orderHandler;
     private final NktPaymentHandler   paymentHandler;
     private final NktNotificationHandler notificationHandler;
+    private final NktInventoryImportHandler inventoryImportHandler;
 
     /** Runtime handler registry: HandlerKey → NktOperationHandler */
     private final Map<String, NktOperationHandler> handlers = new HashMap<>();
@@ -180,6 +182,9 @@ public class NktCoreService {
         handlers.put("FCM_SEND_NOTIFICATION",      notificationHandler.sendNotification());
         handlers.put("FCM_SEND_GROUP_NOTIFICATION",notificationHandler.sendGroupNotification());
         handlers.put("FCM_SEND_BATCH_NOTIFICATION",notificationHandler.sendBatchNotification());
+
+        // Inventory master data import (Excel → categories / sub_categories / stocks)
+        handlers.put("EXCEL_STOCK_MASTER_IMPORT", inventoryImportHandler.importStockMaster());
 
         log.info("NktCoreService: {} operation handlers registered", handlers.size());
     }
@@ -297,12 +302,12 @@ public class NktCoreService {
                 "statusDesc", "Success"
         ));
     }
-    
-    
+
+
 	private String execFindByUserId(NktProcessDefinition def, String userId, String userType) {
-		
+
 		String tableName = userType + def.getCollection();
-		
+
 		if (!ObjectId.isValid(userId)) {
 		    return toJson(Map.of(
 		            "statusCode", "N400",
@@ -320,24 +325,24 @@ public class NktCoreService {
 		            "statusDesc", "User not found"
 		    ));
 		}
-		
+
 		 long orderCount = countOrdersLast3Months(
 		            "orders",
 		            userId
 		    );
-		 
+
 		 Map<String, Object> summary = getLast3MonthsOrderSummary("orders", userId);
-		 
+
 		 user.put("orderSummaryLast3Months", summary);
-		 
+
 		 user.put("noOfOrders", orderCount);
 
 		return toJson(Map.of("data", user));
-		
+
 //		return toJson(repo.findOne(tableName, "_id", new ObjectId(userId))
 //				.orElseThrow(() -> new RuntimeException("Document not found for user: " + userId)));
 	}
-	
+
 	public long countOrdersLast3Months(String collection, String userId) {
 
 	    String threeMonthsAgo = LocalDateTime.now()
@@ -371,13 +376,13 @@ public class NktCoreService {
 		AggregationResults<Document> results = repo.aggregate(aggregation, collection);
 
 		List<Map<String, Object>> monthlyOrders = new ArrayList<>();
-		
+
 		long totalCount = 0;
 
 		for (Document doc : results.getMappedResults()) {
 
 			long count = ((Number) doc.get("count")).longValue();
-			
+
 			String monthKey = doc.getString("_id"); // 2026-06
 
 			YearMonth ym = YearMonth.parse(monthKey);
@@ -413,17 +418,17 @@ public class NktCoreService {
 			Map<String, Object> data, String userId, String userType) {
 
     	String tableName = userType + def.getCollection();
-    	
+
     	if (!ObjectId.isValid(userId)) {
 		    return toJson(Map.of(
 		            "statusCode", "N400",
 		            "statusDesc", "Invalid userId format"
 		    ));
 		}
-    	
+
     	Map<String, Object> updates = new LinkedHashMap<>();
 		// Only update fields explicitly allowed in config
-		
+
 		if (def.getRequiredFields() != null) {
 			def.getRequiredFields().forEach(f -> {
 				if (data.get(f) != null)
@@ -465,7 +470,7 @@ public class NktCoreService {
         if (!missing.isEmpty())
             throw new RuntimeException("Missing required fields: " + missing);
     }
-    
+
 	private void validateRoles(NktProcessDefinition def, String userType) {
 		List<String> allowedRoles = def.getAllowedRoles();
 		if (allowedRoles == null || allowedRoles.isEmpty())
@@ -478,20 +483,20 @@ public class NktCoreService {
 	}
 
 	private String extractUserId(Map<String, Object> data) {
-		
+
 		Object tokenObj = data.get("token");
-		
+
 		if (tokenObj == null || tokenObj.toString().isBlank())
 			throw new RuntimeException("Authentication required: missing token");
 
 		String token = tokenObj.toString().replaceFirst("(?i)^Bearer\\s+", "");
-		
+
 //		if (!jwtProvider.isTokenValid(token))
 //			throw new RuntimeException("Invalid or expired token");
-		
+
 		if (!jwtProvider.isTokenValid(token))
 			throw new RuntimeException("Invalid or expired token");
-		
+
 		return jwtProvider.extractUserId(token) + "," +jwtProvider.extractUserType(token);
 	}
 
@@ -503,7 +508,7 @@ public class NktCoreService {
         try { return mapper.writeValueAsString(obj); }
         catch (Exception e) { return "{\"error\":\"serialisation failed\"}"; }
     }
-    
+
     @SuppressWarnings("unchecked")
     private void enrichStoreImages(Map<String, Object> store) {
 
@@ -529,7 +534,7 @@ public class NktCoreService {
             }
         }
     }
-    
+
     private String toBase64(String relativePath) {
         try {
             if (relativePath == null) return null;
