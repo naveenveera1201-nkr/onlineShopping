@@ -776,193 +776,361 @@ public class NktCatalogueHandler {
 //        };
 //    }
     
-    public NktOperationHandler getCategoriesByStore() {
+//    public NktOperationHandler getCategoriesByStore() {
+//
+//        return (data, userId, repo, mapper, def) -> {
+//
+//            String storeId = str(data, "storeId");
+//
+//            // Validate storeId
+//            if (storeId == null || storeId.isBlank()) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N400",
+//                        "statusDesc", "storeId is required"
+//                ));
+//            }
+//
+//            // Check store exists
+//            Map<String, Object> store = repo
+//                    .findOne("stores", "storeId", storeId)
+//                    .orElse(null);
+//
+//            if (store == null) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N404",
+//                        "statusDesc", "Store not found"
+//                ));
+//            }
+//
+//            // Get stocks for this store
+//            List<Map<String, Object>> stocks =
+//                    repo.findAll("stocks", Map.of("storeId", storeId));
+//
+//            // No stocks
+//            if (stocks == null || stocks.isEmpty()) {
+//                return json(mapper, Map.of(
+//                        "data", Collections.emptyList(),
+//                        "count", 0,
+//                        "statusCode", "N200",
+//                        "statusDesc", "No stocks found for this store"
+//                ));
+//            }
+//
+//            /*
+//             * Get DISTINCT categoryIds from stocks.
+//             *
+//             * Priority:
+//             * 1. Use categoryId from stock if available
+//             * 2. If categoryId is missing/blank,
+//             *    use subCategoryId and resolve its parentCategoryId
+//             */
+//
+//            // Fetch active subcategories for fallback resolution
+//            List<Map<String, Object>> allSubCategories =
+//                    repo.findAll(
+//                            "sub_categories",
+//                            Map.of("status", "ACTIVE")
+//                    );
+//
+//            // Create subcategory lookup map
+//            Map<String, Map<String, Object>> subCategoryMap =
+//                    allSubCategories.stream()
+//                            .filter(sc -> sc.get("subcategoryId") != null)
+//                            .collect(Collectors.toMap(
+//                                    sc -> sc.get("subcategoryId").toString(),
+//                                    sc -> sc,
+//                                    (existing, replacement) -> existing,
+//                                    LinkedHashMap::new
+//                            ));
+//
+//            // Store distinct category IDs
+//            Set<String> categoryIds = new LinkedHashSet<>();
+//
+//            for (Map<String, Object> stock : stocks) {
+//
+//                /*
+//                 * First priority:
+//                 * Check whether categoryId exists directly in stock.
+//                 */
+//                Object categoryIdObj = stock.get("categoryId");
+//
+//                if (categoryIdObj != null &&
+//                        !categoryIdObj.toString().isBlank()) {
+//
+//                    categoryIds.add(categoryIdObj.toString());
+//                    continue;
+//                }
+//
+//                /*
+//                 * Fallback:
+//                 * categoryId is missing, so use subCategoryId.
+//                 */
+//                Object subCategoryIdObj = stock.get("subCategoryId");
+//
+//                if (subCategoryIdObj == null ||
+//                        subCategoryIdObj.toString().isBlank()) {
+//
+//                    continue;
+//                }
+//
+//                String subCategoryId =
+//                        subCategoryIdObj.toString();
+//
+//                /*
+//                 * Find the subcategory using subcategoryId.
+//                 */
+//                Map<String, Object> subCategory =
+//                        subCategoryMap.get(subCategoryId);
+//
+//                if (subCategory == null) {
+//                    continue;
+//                }
+//
+//                /*
+//                 * Get parentCategoryId from subcategory.
+//                 * parentCategoryId is the categoryId.
+//                 */
+//                Object parentCategoryIdObj =
+//                        subCategory.get("parentCategoryId");
+//
+//                if (parentCategoryIdObj != null &&
+//                        !parentCategoryIdObj.toString().isBlank()) {
+//
+//                    categoryIds.add(
+//                            parentCategoryIdObj.toString()
+//                    );
+//                }
+//            }
+//
+//            // No category mapped to stocks
+//            if (categoryIds.isEmpty()) {
+//                return json(mapper, Map.of(
+//                        "data", Collections.emptyList(),
+//                        "count", 0,
+//                        "statusCode", "N200",
+//                        "statusDesc", "No categories found for this store"
+//                ));
+//            }
+//
+//            // Fetch active master categories
+//            List<Map<String, Object>> allCategories =
+//                    repo.findAll(
+//                            "categories",
+//                            Map.of("status", "ACTIVE")
+//                    );
+//
+//            // Create category lookup map
+//            Map<String, Map<String, Object>> categoryMap =
+//                    allCategories.stream()
+//                            .filter(c -> c.get("categoryId") != null)
+//                            .collect(Collectors.toMap(
+//                                    c -> c.get("categoryId").toString(),
+//                                    c -> c,
+//                                    (existing, replacement) -> existing,
+//                                    LinkedHashMap::new
+//                            ));
+//
+//            // Build response
+//            List<Map<String, Object>> result =
+//                    new ArrayList<>();
+//
+//            for (String catId : categoryIds) {
+//
+//                Map<String, Object> master =
+//                        categoryMap.get(catId);
+//
+//                // Category doesn't exist / inactive in master
+//                if (master == null) {
+//                    continue;
+//                }
+//
+//                Map<String, Object> obj =
+//                        new LinkedHashMap<>();
+//
+//                obj.put("categoryId", catId);
+//                obj.put("name", master.get("name"));
+//                obj.put("categoryName", master.get("categoryName"));
+//                obj.put("icon", enrichImages(master.get("icon")));
+//
+//                result.add(obj);
+//            }
+//
+//            return json(mapper, Map.of(
+//                    "data", result,
+//                    "count", result.size(),
+//                    "statusCode", "N200",
+//                    "statusDesc", "Success"
+//            ));
+//        };
+//    }
+    
+	public NktOperationHandler getCategoriesByStore() {
 
-        return (data, userId, repo, mapper, def) -> {
+		return (data, userId, repo, mapper, def) -> {
 
-            String storeId = str(data, "storeId");
+			String storeId = str(data, "storeId");
 
-            // Validate storeId
-            if (storeId == null || storeId.isBlank()) {
-                return json(mapper, Map.of(
-                        "statusCode", "N400",
-                        "statusDesc", "storeId is required"
-                ));
-            }
+			// ---------------------------------------------------------
+			// 1. Validate storeId
+			// ---------------------------------------------------------
+			if (storeId == null || storeId.isBlank()) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "storeId is required"));
+			}
 
-            // Check store exists
-            Map<String, Object> store = repo
-                    .findOne("stores", "storeId", storeId)
-                    .orElse(null);
+			// ---------------------------------------------------------
+			// 2. Check store exists
+			// ---------------------------------------------------------
+			Map<String, Object> store = repo.findOne("stores", "storeId", storeId).orElse(null);
 
-            if (store == null) {
-                return json(mapper, Map.of(
-                        "statusCode", "N404",
-                        "statusDesc", "Store not found"
-                ));
-            }
+			if (store == null) {
+				return json(mapper, Map.of("statusCode", "N404", "statusDesc", "Store not found"));
+			}
 
-            // Get stocks for this store
-            List<Map<String, Object>> stocks =
-                    repo.findAll("stocks", Map.of("storeId", storeId));
+			// ---------------------------------------------------------
+			// 3. Get stocks for this store
+			// ---------------------------------------------------------
+			List<Map<String, Object>> stocks = repo.findAll("stocks", Map.of("storeId", storeId));
 
-            // No stocks
-            if (stocks == null || stocks.isEmpty()) {
-                return json(mapper, Map.of(
-                        "data", Collections.emptyList(),
-                        "count", 0,
-                        "statusCode", "N200",
-                        "statusDesc", "No stocks found for this store"
-                ));
-            }
+			if (stocks == null || stocks.isEmpty()) {
+				return json(mapper, Map.of("data", Collections.emptyList(), "count", 0, "statusCode", "N200",
+						"statusDesc", "No stocks found for this store"));
+			}
 
-            /*
-             * Get DISTINCT categoryIds from stocks.
-             *
-             * Priority:
-             * 1. Use categoryId from stock if available
-             * 2. If categoryId is missing/blank,
-             *    use subCategoryId and resolve its parentCategoryId
-             */
+			// ---------------------------------------------------------
+			// 4. Collect categoryIds directly available in stocks
+			//
+			// Also collect subCategoryIds only when categoryId
+			// is missing.
+			// ---------------------------------------------------------
+			Set<String> categoryIds = new LinkedHashSet<>();
 
-            // Fetch active subcategories for fallback resolution
-            List<Map<String, Object>> allSubCategories =
-                    repo.findAll(
-                            "sub_categories",
-                            Map.of("status", "ACTIVE")
-                    );
+			Set<String> missingCategorySubCategoryIds = new LinkedHashSet<>();
 
-            // Create subcategory lookup map
-            Map<String, Map<String, Object>> subCategoryMap =
-                    allSubCategories.stream()
-                            .filter(sc -> sc.get("subcategoryId") != null)
-                            .collect(Collectors.toMap(
-                                    sc -> sc.get("subcategoryId").toString(),
-                                    sc -> sc,
-                                    (existing, replacement) -> existing,
-                                    LinkedHashMap::new
-                            ));
+			for (Map<String, Object> stock : stocks) {
 
-            // Store distinct category IDs
-            Set<String> categoryIds = new LinkedHashSet<>();
+				String categoryId = toNonBlankString(stock.get("categoryId"));
 
-            for (Map<String, Object> stock : stocks) {
+				if (categoryId != null) {
+					categoryIds.add(categoryId);
+					continue;
+				}
 
-                /*
-                 * First priority:
-                 * Check whether categoryId exists directly in stock.
-                 */
-                Object categoryIdObj = stock.get("categoryId");
+				String subCategoryId = toNonBlankString(stock.get("subCategoryId"));
 
-                if (categoryIdObj != null &&
-                        !categoryIdObj.toString().isBlank()) {
+				if (subCategoryId != null) {
+					missingCategorySubCategoryIds.add(subCategoryId);
+				}
+			}
 
-                    categoryIds.add(categoryIdObj.toString());
-                    continue;
-                }
+			// ---------------------------------------------------------
+			// 5. Resolve category IDs only for stocks where categoryId
+			// is missing.
+			// ---------------------------------------------------------
+			if (!missingCategorySubCategoryIds.isEmpty()) {
 
-                /*
-                 * Fallback:
-                 * categoryId is missing, so use subCategoryId.
-                 */
-                Object subCategoryIdObj = stock.get("subCategoryId");
+				/*
+				 * Current repo API shown in the question only supports simple findAll filters.
+				 *
+				 * If your repository supports IN queries, use that instead of loading every
+				 * active subcategory.
+				 */
 
-                if (subCategoryIdObj == null ||
-                        subCategoryIdObj.toString().isBlank()) {
+				List<Map<String, Object>> subCategories = repo.findAll("sub_categories", Map.of("status", "ACTIVE"));
 
-                    continue;
-                }
+				Set<String> requiredSubCategoryIds = missingCategorySubCategoryIds;
 
-                String subCategoryId =
-                        subCategoryIdObj.toString();
+				for (Map<String, Object> subCategory : subCategories) {
 
-                /*
-                 * Find the subcategory using subcategoryId.
-                 */
-                Map<String, Object> subCategory =
-                        subCategoryMap.get(subCategoryId);
+					String subCategoryId = toNonBlankString(subCategory.get("subcategoryId"));
 
-                if (subCategory == null) {
-                    continue;
-                }
+					if (subCategoryId == null || !requiredSubCategoryIds.contains(subCategoryId)) {
+						continue;
+					}
 
-                /*
-                 * Get parentCategoryId from subcategory.
-                 * parentCategoryId is the categoryId.
-                 */
-                Object parentCategoryIdObj =
-                        subCategory.get("parentCategoryId");
+					String parentCategoryId = toNonBlankString(subCategory.get("parentCategoryId"));
 
-                if (parentCategoryIdObj != null &&
-                        !parentCategoryIdObj.toString().isBlank()) {
+					if (parentCategoryId != null) {
+						categoryIds.add(parentCategoryId);
+					}
+				}
+			}
 
-                    categoryIds.add(
-                            parentCategoryIdObj.toString()
-                    );
-                }
-            }
+			// ---------------------------------------------------------
+			// 6. No categories found
+			// ---------------------------------------------------------
+			if (categoryIds.isEmpty()) {
+				return json(mapper, Map.of("data", Collections.emptyList(), "count", 0, "statusCode", "N200",
+						"statusDesc", "No categories found for this store"));
+			}
 
-            // No category mapped to stocks
-            if (categoryIds.isEmpty()) {
-                return json(mapper, Map.of(
-                        "data", Collections.emptyList(),
-                        "count", 0,
-                        "statusCode", "N200",
-                        "statusDesc", "No categories found for this store"
-                ));
-            }
+			// ---------------------------------------------------------
+			// 7. Fetch active categories
+			//
+			// If repository supports IN filtering, replace this
+			// with a query for only categoryIds.
+			// ---------------------------------------------------------
+			List<Map<String, Object>> categories = repo.findAll("categories", Map.of("status", "ACTIVE"));
 
-            // Fetch active master categories
-            List<Map<String, Object>> allCategories =
-                    repo.findAll(
-                            "categories",
-                            Map.of("status", "ACTIVE")
-                    );
+			// ---------------------------------------------------------
+			// 8. Create category lookup only for required categories
+			// ---------------------------------------------------------
+			Map<String, Map<String, Object>> categoryMap = new HashMap<>();
 
-            // Create category lookup map
-            Map<String, Map<String, Object>> categoryMap =
-                    allCategories.stream()
-                            .filter(c -> c.get("categoryId") != null)
-                            .collect(Collectors.toMap(
-                                    c -> c.get("categoryId").toString(),
-                                    c -> c,
-                                    (existing, replacement) -> existing,
-                                    LinkedHashMap::new
-                            ));
+			for (Map<String, Object> category : categories) {
 
-            // Build response
-            List<Map<String, Object>> result =
-                    new ArrayList<>();
+				String categoryId = toNonBlankString(category.get("categoryId"));
 
-            for (String catId : categoryIds) {
+				if (categoryId == null || !categoryIds.contains(categoryId)) {
+					continue;
+				}
 
-                Map<String, Object> master =
-                        categoryMap.get(catId);
+				categoryMap.putIfAbsent(categoryId, category);
+			}
 
-                // Category doesn't exist / inactive in master
-                if (master == null) {
-                    continue;
-                }
+			// ---------------------------------------------------------
+			// 9. Build unique category response
+			// ---------------------------------------------------------
+			List<Map<String, Object>> result = new ArrayList<>(categoryIds.size());
 
-                Map<String, Object> obj =
-                        new LinkedHashMap<>();
+			for (String categoryId : categoryIds) {
 
-                obj.put("categoryId", catId);
-                obj.put("name", master.get("name"));
-                obj.put("categoryName", master.get("categoryName"));
-                obj.put("icon", enrichImages(master.get("icon")));
+				Map<String, Object> category = categoryMap.get(categoryId);
 
-                result.add(obj);
-            }
+				if (category == null) {
+					continue;
+				}
 
-            return json(mapper, Map.of(
-                    "data", result,
-                    "count", result.size(),
-                    "statusCode", "N200",
-                    "statusDesc", "Success"
-            ));
-        };
-    }
+				Map<String, Object> obj = new LinkedHashMap<>();
+
+				obj.put("categoryId", categoryId);
+				obj.put("name", category.get("name"));
+				obj.put("categoryName", category.get("categoryName"));
+				obj.put("icon", enrichImages(category.get("icon")));
+
+				result.add(obj);
+			}
+
+			// ---------------------------------------------------------
+			// 10. Response
+			// ---------------------------------------------------------
+			return json(mapper,
+					Map.of("data", result, "count", result.size(), "statusCode", "N200", "statusDesc", "Success"));
+		};
+	}
+
+	/**
+	 * Converts an Object to a trimmed non-empty String.
+	 */
+	private String toNonBlankString(Object value) {
+
+		if (value == null) {
+			return null;
+		}
+
+		String result = value.toString().trim();
+
+		return result.isEmpty() ? null : result;
+	}
     
     public NktOperationHandler getSubCategories() {
         return (data, userId, repo, mapper, def) -> {

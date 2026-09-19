@@ -6,13 +6,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
@@ -22,16 +20,14 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
-import com.mongodb.bulk.BulkWriteResult;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * Completely model-less MongoDB repository for the NKT no-code platform.
  *
- * Every method accepts a plain {@code collectionName} string at runtime so
- * no Java entity class is required.  All documents are represented as
+ * Every method accepts a plain {@code collectionName} string at runtime so no
+ * Java entity class is required. All documents are represented as
  * {@code Map<String, Object>} — they are stored / retrieved as raw BSON
  * Documents and converted automatically.
  */
@@ -40,73 +36,63 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class NktDynamicRepository {
 
-    private final MongoTemplate mongo;
+	private final MongoTemplate mongo;
 
-    // ─── INSERT / SAVE ───────────────────────────────────────────────────────
+	// ─── INSERT / SAVE ───────────────────────────────────────────────────────
 
-    /** Insert a new document; auto-generates {@code _id} if absent. */
-    public Map<String, Object> insert(String collection, Map<String, Object> data) {
-        Document doc = new Document(sanitise(data));
-        mongo.insert(doc, collection);
-        return toMap(doc);
-    }
+	/** Insert a new document; auto-generates {@code _id} if absent. */
+	public Map<String, Object> insert(String collection, Map<String, Object> data) {
+		Document doc = new Document(sanitise(data));
+		mongo.insert(doc, collection);
+		return toMap(doc);
+	}
 
-    /** Save (insert or replace) a document. */
-    public Map<String, Object> save(String collection, Map<String, Object> data) {
-        Document doc = new Document(sanitise(data));
-        mongo.save(doc, collection);
-        return toMap(doc);
-    }
+	/** Save (insert or replace) a document. */
+	public Map<String, Object> save(String collection, Map<String, Object> data) {
+		Document doc = new Document(sanitise(data));
+		mongo.save(doc, collection);
+		return toMap(doc);
+	}
 
-    // ─── FIND ────────────────────────────────────────────────────────────────
+	// ─── FIND ────────────────────────────────────────────────────────────────
 
-    /** Find a document by its {@code _id} string. */
-    public Optional<Map<String, Object>> findById(String collection, String id) {
-        Query q = Query.query(Criteria.where("_id").is(toId(id)));
-        Document doc = mongo.findOne(q, Document.class, collection);
-        return Optional.ofNullable(toMap(doc));
-    }
+	/** Find a document by its {@code _id} string. */
+	public Optional<Map<String, Object>> findById(String collection, String id) {
+		Query q = Query.query(Criteria.where("_id").is(toId(id)));
+		Document doc = mongo.findOne(q, Document.class, collection);
+		return Optional.ofNullable(toMap(doc));
+	}
 
-    /** Find the first document matching a single field/value pair. */
-    public Optional<Map<String, Object>> findOne(String collection,
-                                                  String field, Object value) {
-        Query q = Query.query(Criteria.where(field).is(value));
-        Document doc = mongo.findOne(q, Document.class, collection);
-        return Optional.ofNullable(toMap(doc));
-    }
+	/** Find the first document matching a single field/value pair. */
+	public Optional<Map<String, Object>> findOne(String collection, String field, Object value) {
+		Query q = Query.query(Criteria.where(field).is(value));
+		Document doc = mongo.findOne(q, Document.class, collection);
+		return Optional.ofNullable(toMap(doc));
+	}
 
-    /** Find the first document matching multiple field/value criteria (AND). */
-    public Optional<Map<String, Object>> findOneByCriteria(String collection,
-                                                            Map<String, Object> criteria) {
-        Document doc = mongo.findOne(buildQuery(criteria), Document.class, collection);
-        return Optional.ofNullable(toMap(doc));
-    }
+	/** Find the first document matching multiple field/value criteria (AND). */
+	public Optional<Map<String, Object>> findOneByCriteria(String collection, Map<String, Object> criteria) {
+		Document doc = mongo.findOne(buildQuery(criteria), Document.class, collection);
+		return Optional.ofNullable(toMap(doc));
+	}
 
-    /** Find all documents matching the criteria map. */
-    public List<Map<String, Object>> findAll(String collection,
-                                              Map<String, Object> criteria) {
-        return mongo.find(buildQuery(criteria), Document.class, collection)
-                .stream().map(this::toMap).collect(Collectors.toList());
-    }
+	/** Find all documents matching the criteria map. */
+	public List<Map<String, Object>> findAll(String collection, Map<String, Object> criteria) {
+		return mongo.find(buildQuery(criteria), Document.class, collection).stream().map(this::toMap)
+				.collect(Collectors.toList());
+	}
 
-    /** Find all documents in the collection (no filter). */
-    public List<Map<String, Object>> findAll(String collection) {
-        return mongo.findAll(Document.class, collection)
-                .stream().map(this::toMap).collect(Collectors.toList());
-    }
+	/** Find all documents in the collection (no filter). */
+	public List<Map<String, Object>> findAll(String collection) {
+		return mongo.findAll(Document.class, collection).stream().map(this::toMap).collect(Collectors.toList());
+	}
 
-    /** Find with sort, skip, and limit. */
-    public List<Map<String, Object>> findAllSorted(String collection,
-                                                    Map<String, Object> criteria,
-                                                    String sortField,
-                                                    Sort.Direction direction,
-                                                    int skip, int limit) {
-        Query q = buildQuery(criteria)
-                .with(Sort.by(direction, sortField))
-                .skip(skip).limit(limit);
-        return mongo.find(q, Document.class, collection)
-                .stream().map(this::toMap).collect(Collectors.toList());
-    }
+	/** Find with sort, skip, and limit. */
+	public List<Map<String, Object>> findAllSorted(String collection, Map<String, Object> criteria, String sortField,
+			Sort.Direction direction, int skip, int limit) {
+		Query q = buildQuery(criteria).with(Sort.by(direction, sortField)).skip(skip).limit(limit);
+		return mongo.find(q, Document.class, collection).stream().map(this::toMap).collect(Collectors.toList());
+	}
 
 	/** Find with sort, skip, and limit. */
 	public List<Map<String, Object>> findAllSortedTwo(String collection, Map<String, Object> criteria,
@@ -189,111 +175,56 @@ public class NktDynamicRepository {
 		return mongoCriteria;
 	}
 
-    /** Check existence. */
-    public boolean exists(String collection, Map<String, Object> criteria) {
-        return mongo.exists(buildQuery(criteria), Document.class, collection);
-    }
+	/** Check existence. */
+	public boolean exists(String collection, Map<String, Object> criteria) {
+		return mongo.exists(buildQuery(criteria), Document.class, collection);
+	}
 
-    public long count(String collection, Map<String, Object> criteria) {
-        return mongo.count(buildQuery(criteria), Document.class, collection);
-    }
+	public long count(String collection, Map<String, Object> criteria) {
+		return mongo.count(buildQuery(criteria), Document.class, collection);
+	}
 
 	public long countOf(String collection, Query query) {
 		return mongo.count(query, collection);
 	}
 
-    // ─── UPDATE ──────────────────────────────────────────────────────────────
+	// ─── UPDATE ──────────────────────────────────────────────────────────────
 
-    /** Apply a partial field update on the document with the given {@code _id}. */
-    public void updateById(String collection, String id,
-                           Map<String, Object> fields) {
-        Query q = Query.query(Criteria.where("_id").is(toId(id)));
-        mongo.updateFirst(q, buildUpdate(fields), Document.class, collection);
-    }
+	/** Apply a partial field update on the document with the given {@code _id}. */
+	public void updateById(String collection, String id, Map<String, Object> fields) {
+		Query q = Query.query(Criteria.where("_id").is(toId(id)));
+		mongo.updateFirst(q, buildUpdate(fields), Document.class, collection);
+	}
 
-    /** Apply a partial update on the first document matching criteria. */
-    public void updateFirst(String collection, Map<String, Object> criteria,
-                            Map<String, Object> fields) {
-        mongo.updateFirst(buildQuery(criteria), buildUpdate(fields),
-                Document.class, collection);
-    }
+	/** Apply a partial update on the first document matching criteria. */
+	public void updateFirst(String collection, Map<String, Object> criteria, Map<String, Object> fields) {
+		mongo.updateFirst(buildQuery(criteria), buildUpdate(fields), Document.class, collection);
+	}
 
-    /** Apply a partial update on ALL documents matching criteria. */
-    public void updateMany(String collection, Map<String, Object> criteria,
-                           Map<String, Object> fields) {
-        mongo.updateMulti(buildQuery(criteria), buildUpdate(fields),
-                Document.class, collection);
-    }
+	/** Apply a partial update on ALL documents matching criteria. */
+	public void updateMany(String collection, Map<String, Object> criteria, Map<String, Object> fields) {
+		mongo.updateMulti(buildQuery(criteria), buildUpdate(fields), Document.class, collection);
+	}
 
-    // ─── DELETE ──────────────────────────────────────────────────────────────
+	// ─── DELETE ──────────────────────────────────────────────────────────────
 
-    /** Hard-delete by {@code _id}. */
-    public void deleteById(String collection, String id) {
-        mongo.remove(Query.query(Criteria.where("_id").is(toId(id))),
-                Document.class, collection);
-    }
+	/** Hard-delete by {@code _id}. */
+	public void deleteById(String collection, String id) {
+		mongo.remove(Query.query(Criteria.where("_id").is(toId(id))), Document.class, collection);
+	}
 
-    /** Hard-delete all documents matching criteria. */
-    public void deleteAll(String collection, Map<String, Object> criteria) {
-        mongo.remove(buildQuery(criteria), Document.class, collection);
-    }
+	/** Hard-delete all documents matching criteria. */
+	public void deleteAll(String collection, Map<String, Object> criteria) {
+		mongo.remove(buildQuery(criteria), Document.class, collection);
+	}
 
-    // ─── BULK UPSERT ─────────────────────────────────────────────────────────
+	// ─── RAW ACCESS ──────────────────────────────────────────────────────────
 
-    /**
-     * Insert-or-update a batch of documents in a single round trip, keyed by a
-     * business field (not {@code _id}) — added for the Excel stock-master
-     * import, which needs to write ~2,700 stocks without one query per row.
-     *
-     * For each document, {@code keyField} identifies the matching document
-     * (e.g. {@code "stockId"}). Every other top-level field is applied with
-     * {@code $set} — so on an update the document is fully replaced field by
-     * field (including e.g. a nested {@code unit[]} array, satisfying "replace
-     * the unit list with the latest Excel data" rather than merging/appending).
-     * Fields named in {@code setOnInsertFields} (typically {@code "createdAt"})
-     * are instead applied with {@code $setOnInsert}, so they are written once
-     * on a brand-new document and left untouched on an update — exactly the
-     * "preserve createdAt, always refresh updatedAt" rule the import needs.
-     * {@code _id} is preserved automatically by Mongo's own upsert semantics;
-     * callers never need to look up or pass it.
-     *
-     * This is the smallest capability the existing repository was missing: an
-     * atomic, batched upsert-by-business-key. Everything else about this
-     * class (model-less {@code Map<String,Object>} documents, per-call
-     * collection name) is unchanged.
-     */
-    public BulkWriteResult bulkUpsertByField(String collection, String keyField,
-                                              List<Map<String, Object>> documents,
-                                              Set<String> setOnInsertFields) {
-        if (documents == null || documents.isEmpty()) {
-            return null;
-        }
+	public MongoTemplate template() {
+		return mongo;
+	}
 
-        BulkOperations ops = mongo.bulkOps(BulkOperations.BulkMode.UNORDERED, collection);
-
-        for (Map<String, Object> doc : documents) {
-            Object keyValue = doc.get(keyField);
-            Query query = Query.query(Criteria.where(keyField).is(keyValue));
-
-            Update update = new Update();
-            for (Map.Entry<String, Object> entry : sanitise(doc).entrySet()) {
-                if (setOnInsertFields != null && setOnInsertFields.contains(entry.getKey())) {
-                    update.setOnInsert(entry.getKey(), entry.getValue());
-                } else {
-                    update.set(entry.getKey(), entry.getValue());
-                }
-            }
-            ops.upsert(query, update);
-        }
-
-        return ops.execute();
-    }
-
-    // ─── RAW ACCESS ──────────────────────────────────────────────────────────
-
-    public MongoTemplate template() { return mongo; }
-
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+	// ─── Helpers ─────────────────────────────────────────────────────────────
 
 //    private Query buildQuery(Map<String, Object> criteria) {
 //        if (criteria == null || criteria.isEmpty()) return new Query();
@@ -303,105 +234,108 @@ public class NktDynamicRepository {
 //        return Query.query(c.andOperator(parts.toArray(new Criteria[0])));
 //    }
 
-    @SuppressWarnings("unchecked")
-    private Query buildQuery(Map<String, Object> criteria) {
+	@SuppressWarnings("unchecked")
+	private Query buildQuery(Map<String, Object> criteria) {
 
-        if (criteria == null || criteria.isEmpty()) {
-            return new Query();
-        }
+		if (criteria == null || criteria.isEmpty()) {
+			return new Query();
+		}
 
-        List<Criteria> parts = new ArrayList<>();
+		List<Criteria> parts = new ArrayList<>();
 
-        criteria.forEach((field, value) -> {
+		criteria.forEach((field, value) -> {
 
-            Criteria c = Criteria.where(field);
+			Criteria c = Criteria.where(field);
 
-            if (value instanceof Map<?, ?> operatorMap) {
+			if (value instanceof Map<?, ?> operatorMap) {
 
-                if (operatorMap.containsKey("$in")) {
+				if (operatorMap.containsKey("$in")) {
 
-                    c.in((Collection<?>) operatorMap.get("$in"));
+					c.in((Collection<?>) operatorMap.get("$in"));
 
-                } else if (operatorMap.containsKey("$nin")) {
+				} else if (operatorMap.containsKey("$nin")) {
 
-                    c.nin((Collection<?>) operatorMap.get("$nin"));
+					c.nin((Collection<?>) operatorMap.get("$nin"));
 
-                } else if (operatorMap.containsKey("$gt")) {
+				} else if (operatorMap.containsKey("$gt")) {
 
-                    c.gt(operatorMap.get("$gt"));
+					c.gt(operatorMap.get("$gt"));
 
-                } else if (operatorMap.containsKey("$gte")) {
+				} else if (operatorMap.containsKey("$gte")) {
 
-                    c.gte(operatorMap.get("$gte"));
+					c.gte(operatorMap.get("$gte"));
 
-                } else if (operatorMap.containsKey("$lt")) {
+				} else if (operatorMap.containsKey("$lt")) {
 
-                    c.lt(operatorMap.get("$lt"));
+					c.lt(operatorMap.get("$lt"));
 
-                } else if (operatorMap.containsKey("$lte")) {
+				} else if (operatorMap.containsKey("$lte")) {
 
-                    c.lte(operatorMap.get("$lte"));
+					c.lte(operatorMap.get("$lte"));
 
-                } else if (operatorMap.containsKey("$ne")) {
+				} else if (operatorMap.containsKey("$ne")) {
 
-                    c.ne(operatorMap.get("$ne"));
+					c.ne(operatorMap.get("$ne"));
 
-                } else if (operatorMap.containsKey("$regex")) {
+				} else if (operatorMap.containsKey("$regex")) {
 
-                    c.regex(operatorMap.get("$regex").toString(), "i");
+					c.regex(operatorMap.get("$regex").toString(), "i");
 
-                } else {
+				} else {
 
-                    c.is(value);
-                }
+					c.is(value);
+				}
 
-            } else {
+			} else {
 
-                c.is(value);
-            }
+				c.is(value);
+			}
 
-            parts.add(c);
+			parts.add(c);
 
-        });
+		});
 
-        return new Query().addCriteria(
-                new Criteria().andOperator(parts.toArray(new Criteria[0]))
-        );
-    }
+		return new Query().addCriteria(new Criteria().andOperator(parts.toArray(new Criteria[0])));
+	}
 
-    private Update buildUpdate(Map<String, Object> fields) {
-        Update u = new Update();
-        fields.forEach(u::set);
-        return u;
-    }
+	private Update buildUpdate(Map<String, Object> fields) {
+		Update u = new Update();
+		fields.forEach(u::set);
+		return u;
+	}
 
-    /** Strip reserved keys the caller should not overwrite in Mongo. */
-    private Map<String, Object> sanitise(Map<String, Object> data) {
-        Map<String, Object> clean = new LinkedHashMap<>(data);
-        clean.remove("token"); // never persist the JWT
-        return clean;
-    }
+	/** Strip reserved keys the caller should not overwrite in Mongo. */
+	private Map<String, Object> sanitise(Map<String, Object> data) {
+		Map<String, Object> clean = new LinkedHashMap<>(data);
+		clean.remove("token"); // never persist the JWT
+		return clean;
+	}
 
-    /** Convert a BSON Document to Map, normalising ObjectId → String. */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> toMap(Document doc) {
-        if (doc == null) return null;
-        Map<String, Object> map = new LinkedHashMap<>(doc);
-        Object id = map.remove("_id");
-        if (id != null) map.put("id", id instanceof ObjectId ? id.toString() : id);
-        return map;
-    }
+	/** Convert a BSON Document to Map, normalising ObjectId → String. */
+	@SuppressWarnings("unchecked")
+	private Map<String, Object> toMap(Document doc) {
+		if (doc == null)
+			return null;
+		Map<String, Object> map = new LinkedHashMap<>(doc);
+		Object id = map.remove("_id");
+		if (id != null)
+			map.put("id", id instanceof ObjectId ? id.toString() : id);
+		return map;
+	}
 
-    /**
-     * Accept either a 24-char hex ObjectId string or a plain string id.
-     * Mongo stores _id as ObjectId when possible, so we try to parse first.
-     */
-    private Object toId(String id) {
-        if (id != null && id.length() == 24) {
-            try { return new ObjectId(id); } catch (IllegalArgumentException ignored) {}
-        }
-        return id;
-    }
+	/**
+	 * Accept either a 24-char hex ObjectId string or a plain string id. Mongo
+	 * stores _id as ObjectId when possible, so we try to parse first.
+	 */
+	private Object toId(String id) {
+		if (id != null && id.length() == 24) {
+			try {
+				return new ObjectId(id);
+			} catch (IllegalArgumentException ignored) {
+			}
+		}
+		return id;
+	}
 
 	public AggregationResults<Document> aggregate(Aggregation aggregation, String collection) {
 

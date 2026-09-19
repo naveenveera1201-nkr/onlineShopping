@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.models.fcm.FcmBatchEntry;
@@ -44,6 +45,10 @@ public class NotificationDispatchService {
 
     private final NktDynamicRepository repo;
     private final FirebaseNotificationService firebase;
+
+    /** Give up resending (mark EXPIRED) once a notification has been retried this many times. */
+    @Value("${notification.retry.max-attempts:3}")
+    private int maxRetryAttempts;
 
     // ─────────────────────────────────────────────────────────────────────
     // Public API
@@ -161,14 +166,36 @@ public class NotificationDispatchService {
                 .distinct()
                 .toList();
 
+        // Single-recipient sends (by far the common case — FCM_SEND_NOTIFICATION,
+        // every OrderNotificationService call) get their history row written
+        // BEFORE the push goes out, so the row's own id can ride inside the FCM
+        // data payload as "notificationId". That is the only way the RECEIVING
+        // device — not the caller of this API — ever learns the id, since it
+        // never sees this method's return value. The client reads
+        // remoteMessage.getData().get("notificationId") and echoes it back on
+        // FCM_MARK_NOTIFICATION_READ when the user opens the notification.
+        //
+        // A multi-recipient group/batch send still gets one history row per
+        // recipient, just written after the (single, shared) Firebase call as
+        // before — a single shared payload can't carry a different id per
+        // recipient without splitting into one Firebase call per recipient.
+        String singleNotificationId = null;
+        if (recipientsForHistory != null && recipientsForHistory.size() == 1) {
+            Recipient only = recipientsForHistory.get(0);
+            singleNotificationId = recordHistory(only.userId(), only.storeId(), notificationType, title, body, extra);
+        }
+
         Map<String, String> data = dataPayload(notificationType, extra);
+        if (singleNotificationId != null) {
+            data.put("notificationId", singleNotificationId);
+        }
         FcmSendResult result = firebase.sendToMultipleDevices(tokens, title, body, data);
 
         for (String invalid : result.getInvalidTokens()) {
             deactivateToken(invalid);
         }
 
-        if (recipientsForHistory != null) {
+        if (recipientsForHistory != null && recipientsForHistory.size() != 1) {
             for (Recipient r : recipientsForHistory) {
                 recordHistory(r.userId(), r.storeId(), notificationType, title, body, extra);
             }
@@ -196,9 +223,13 @@ public class NotificationDispatchService {
         return data;
     }
 
-    /** Best-effort notification history write — never allowed to break a send. */
-    private void recordHistory(String userId, String storeId, String notificationType, String title,
-                                String body, Map<String, Object> data) {
+    /**
+     * Best-effort notification history write — never allowed to break a send.
+     * Returns the new history row's id (for callers that need it) or null if
+     * the write itself failed.
+     */
+    private String recordHistory(String userId, String storeId, String notificationType, String title,
+                                  String body, Map<String, Object> data) {
         try {
             Map<String, Object> rec = new LinkedHashMap<>();
             rec.put("userId", userId);
@@ -210,11 +241,91 @@ public class NotificationDispatchService {
             rec.put("status", "SENT");
             rec.put("sentAt", LocalDateTime.now().toString());
             rec.put("readAt", null);
+            rec.put("retryCount", 0);
+            rec.put("lastRetryAt", null);
             rec.put("createdAt", LocalDateTime.now().toString());
-            repo.insert(HISTORY_COLLECTION, rec);
+            Map<String, Object> inserted = repo.insert(HISTORY_COLLECTION, rec);
+            return inserted == null ? null : str(inserted, "id");
         } catch (Exception e) {
             log.warn("Failed to record notification history (non-fatal): {}", e.getMessage());
+            return null;
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Unread-notification retry support (FCM has no native read receipt —
+    // the client tells us via FCM_MARK_NOTIFICATION_READ; this scheduler-
+    // facing API lets NotificationRetryScheduler find and resend the rest)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Marks a notification as read/opened by its recipient. Idempotent — a
+     * second call on an already-read notification is a harmless no-op.
+     * Ownership-checked: only the userId it was sent to may mark it read.
+     */
+    public boolean markAsRead(String notificationId, String userId) {
+        if (notificationId == null || notificationId.isBlank()) return false;
+        Map<String, Object> notif = repo.findById(HISTORY_COLLECTION, notificationId).orElse(null);
+        if (notif == null) return false;
+        if (userId != null && !userId.equals(str(notif, "userId"))) return false;
+        if ("READ".equals(str(notif, "status"))) return true;
+
+        repo.updateById(HISTORY_COLLECTION, notificationId, Map.of(
+                "status", "READ",
+                "readAt", LocalDateTime.now().toString()));
+        return true;
+    }
+
+    /**
+     * Notifications still {@code status=SENT} (not yet marked read) whose
+     * {@code sentAt} is older than {@code cutoff} and that have not yet
+     * exhausted {@code maxRetryAttempts} resends. Used by
+     * {@code NotificationRetryScheduler}.
+     */
+    public List<Map<String, Object>> findUnreadOlderThan(LocalDateTime cutoff) {
+        Map<String, Object> criteria = Map.of(
+                "status", "SENT",
+                "sentAt", Map.of("$lt", cutoff.toString()),
+                "retryCount", Map.of("$lt", maxRetryAttempts));
+        return repo.findAll(HISTORY_COLLECTION, criteria);
+    }
+
+    /**
+     * Re-sends one notification history row to the recipient's CURRENT
+     * active devices — never the token captured at original send time,
+     * since that device may since have been deactivated or replaced. Does
+     * not write a new history row; it updates the retry bookkeeping on the
+     * existing one and marks it {@code EXPIRED} once {@code maxRetryAttempts}
+     * is reached, so it is never picked up again.
+     */
+    public void resendUnread(String notificationId) {
+        Map<String, Object> notif = repo.findById(HISTORY_COLLECTION, notificationId).orElse(null);
+        if (notif == null) return;
+
+        String userId = str(notif, "userId");
+        List<Map<String, Object>> devices = activeDevicesFor(userId);
+        int retryCount = notif.get("retryCount") instanceof Number n ? n.intValue() : 0;
+
+        if (devices.isEmpty()) {
+            repo.updateById(HISTORY_COLLECTION, notificationId, Map.of(
+                    "status", "EXPIRED",
+                    "lastRetryAt", LocalDateTime.now().toString()));
+            return;
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) notif.get("data");
+        sendToDevicesAndRecord(devices, str(notif, "title"), str(notif, "body"),
+                str(notif, "notificationType"), data, null);
+
+        int newRetryCount = retryCount + 1;
+        Map<String, Object> update = new LinkedHashMap<>();
+        update.put("retryCount", newRetryCount);
+        update.put("lastRetryAt", LocalDateTime.now().toString());
+        if (newRetryCount >= maxRetryAttempts) {
+            update.put("status", "EXPIRED");
+        }
+        repo.updateById(HISTORY_COLLECTION, notificationId, update);
     }
 
     private String str(Map<String, Object> d, String k) {

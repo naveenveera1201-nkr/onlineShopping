@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 @ComponentScan(basePackages = {"com"})
 @EnableMongoRepositories(basePackages = {"com.repository"})
 @EnableFeignClients(basePackages = {"com.feign"})
+@EnableScheduling
 @Slf4j
 public class NKTProcessApplication {
 	

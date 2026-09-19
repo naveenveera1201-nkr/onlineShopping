@@ -22,7 +22,8 @@ import lombok.extern.slf4j.Slf4j;
  * Handles all Firebase Cloud Messaging (FCM) operations.
  *
  * Keys: FCM_REGISTER_DEVICE, FCM_SEND_NOTIFICATION,
- *       FCM_SEND_GROUP_NOTIFICATION, FCM_SEND_BATCH_NOTIFICATION
+ *       FCM_SEND_GROUP_NOTIFICATION, FCM_SEND_BATCH_NOTIFICATION,
+ *       FCM_MARK_NOTIFICATION_READ
  *
  * MongoDB collection: {@code user_devices} — see the class-level doc on
  * {@link #registerDevice()} for the exact document shape. This class owns
@@ -372,6 +373,38 @@ public class NktNotificationHandler {
                             "failed", result.getFailed(),
                             "invalidTokens", result.getInvalidTokens().size()),
                     "statusCode", "N200", "statusDesc", "Batch notification processed"));
+        };
+    }
+
+    /* ── FCM_MARK_NOTIFICATION_READ ────────────────────────────────────
+     *
+     * Called by the client the instant the user actually opens/views a
+     * notification. FCM itself has no delivered/read receipt, so this is
+     * the ONLY signal that stops NotificationRetryScheduler from resending
+     * it. Ownership is enforced in NotificationDispatchService.markAsRead —
+     * a caller can only mark their own notifications read.
+     */
+    public NktOperationHandler markNotificationRead() {
+        return (data, userId, repo, mapper, def) -> {
+
+            if (userId == null) {
+                return err(mapper, "N401", "UNAUTHENTICATED", "Authentication required");
+            }
+
+            String notificationId = str(data, "notificationId");
+            if (notificationId == null || notificationId.isBlank()) {
+                return err(mapper, "N400", "NOTIFICATION_ID_REQUIRED", "notificationId is required");
+            }
+
+            boolean updated = dispatch.markAsRead(notificationId, userId);
+            if (!updated) {
+                return err(mapper, "N404", "NOTIFICATION_NOT_FOUND",
+                        "Notification not found or not owned by caller");
+            }
+
+            return json(mapper, Map.of(
+                    "data", Map.of("notificationId", notificationId, "read", true),
+                    "statusCode", "N200", "statusDesc", "Notification marked as read"));
         };
     }
 

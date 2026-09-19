@@ -120,10 +120,6 @@ public final class NktProcessCodes {
 	/** Send a different push message per target user in one call */
 	public static final String FCM_SEND_BATCH_NOTIFICATION = "nkt.notification.fcm.send_batch";
 
-	// ── INVENTORY IMPORT (Excel → categories / sub_categories / stocks) ────────
-	/** Bulk stock-master import from an uploaded .xlsx workbook (business role only) */
-	public static final String EXCEL_STOCK_MASTER_IMPORT = "nkt.inventory.excel_import";
-
 	// ── LOCATION ──────────────────────────────────────────────────────────────
 	/** API 34 – Reverse geocode */
 	public static final String LOCATION_REVERSE_GEOCODE = "nkt.location.reverse_geocode";

@@ -31,7 +31,6 @@ import com.repository.NktDynamicRepository;
 import com.security.JwtTokenProvider;
 import com.service.handlers.NktAuthHandler;
 import com.service.handlers.NktCatalogueHandler;
-import com.service.handlers.NktInventoryImportHandler;
 import com.service.handlers.NktNotificationHandler;
 import com.service.handlers.NktOperationHandler;
 import com.service.handlers.NktOrderHandler;
@@ -85,7 +84,6 @@ public class NktCoreService {
     private final NktOrderHandler     orderHandler;
     private final NktPaymentHandler   paymentHandler;
     private final NktNotificationHandler notificationHandler;
-    private final NktInventoryImportHandler inventoryImportHandler;
 
     /** Runtime handler registry: HandlerKey → NktOperationHandler */
     private final Map<String, NktOperationHandler> handlers = new HashMap<>();
@@ -182,9 +180,7 @@ public class NktCoreService {
         handlers.put("FCM_SEND_NOTIFICATION",      notificationHandler.sendNotification());
         handlers.put("FCM_SEND_GROUP_NOTIFICATION",notificationHandler.sendGroupNotification());
         handlers.put("FCM_SEND_BATCH_NOTIFICATION",notificationHandler.sendBatchNotification());
-
-        // Inventory master data import (Excel → categories / sub_categories / stocks)
-        handlers.put("EXCEL_STOCK_MASTER_IMPORT", inventoryImportHandler.importStockMaster());
+        handlers.put("FCM_MARK_NOTIFICATION_READ",notificationHandler.markNotificationRead());
 
         log.info("NktCoreService: {} operation handlers registered", handlers.size());
     }

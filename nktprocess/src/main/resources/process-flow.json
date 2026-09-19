@@ -656,7 +656,7 @@
 			"HandlerKey": "NOTIFICATION_REGISTER_DEVICE",
 			"Protected": true,
 			"RequiredFields": [
-				"deviceToken",
+				"fcmToken",
 				"platform",
 				"userType"
 			],
@@ -673,8 +673,7 @@
 			"Protected": true,
 			"RequiredFields": [
 				"deviceId",
-				"fcmToken",
-				"platform"
+				"fcmToken"
 			],
 			"allowedRoles": [
 				"customer",
@@ -724,6 +723,21 @@
 			],
 			"allowedRoles": [
 				"business"
+			]
+		},
+		{
+			"Code": "nkt.notification.fcm.mark_read",
+			"Collection": "notifications",
+			"Operation": "CUSTOM",
+			"HandlerKey": "FCM_MARK_NOTIFICATION_READ",
+			"Protected": true,
+			"RequiredFields": [
+				"notificationId"
+			],
+			"allowedRoles": [
+				"customer",
+				"business",
+				"employee"
 			]
 		},
 		{
