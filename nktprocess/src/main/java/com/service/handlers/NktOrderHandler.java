@@ -81,6 +81,7 @@ public class NktOrderHandler {
     private Map<String, Object> getStoreOrder(String orderId, String storeId, NktDynamicRepository repo) {
         Map<String, Object> order = repo.findById("orders", orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+        order.put("id", orderId);
         if (!storeId.equals(order.get("storeId"))) throw new RuntimeException("Unauthorized");
         return order;
     }

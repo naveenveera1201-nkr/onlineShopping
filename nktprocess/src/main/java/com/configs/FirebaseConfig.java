@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
 
@@ -90,6 +91,19 @@ public class FirebaseConfig {
             return null; // firebase.enabled=false — FirebaseNotificationService checks for null
         }
         return FirebaseMessaging.getInstance(firebaseApp);
+    }
+
+    /**
+     * Used only to verify Firebase Phone-Auth ID tokens (see
+     * {@link com.service.FirebaseAuthService}) — the SMS OTP itself is sent
+     * and checked entirely by the client SDK; the Admin SDK never sends SMS.
+     */
+    @Bean
+    public FirebaseAuth firebaseAuth(FirebaseApp firebaseApp) {
+        if (firebaseApp == null) {
+            return null; // firebase.enabled=false — FirebaseAuthService checks for null
+        }
+        return FirebaseAuth.getInstance(firebaseApp);
     }
 
     private GoogleCredentials resolveCredentials() throws IOException {

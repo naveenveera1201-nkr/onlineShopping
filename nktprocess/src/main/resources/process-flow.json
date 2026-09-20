@@ -27,8 +27,7 @@
 				"identifier",
 				"identifierType",
 				"userType",
-				"purpose",
-				"otp"
+				"purpose"
 			],
 			"allowedRoles": [
 				"customer",
@@ -975,9 +974,7 @@
 			"HandlerKey": "STORE_ORDER_DISPATCH",
 			"Protected": true,
 			"RequiredFields": [
-				"orderId",
-				"agentName",
-				"agentPhone"
+				"orderId"
 			],
 			"UserIdField": "customerId",
 			"allowedRoles": [

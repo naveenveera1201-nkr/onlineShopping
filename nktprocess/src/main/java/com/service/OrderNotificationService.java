@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
 import com.repository.NktDynamicRepository;
@@ -43,21 +44,22 @@ public class OrderNotificationService {
     /** Customer placed a new order — notify the customer, active store staff and the store owner. */
     public void notifyOrderPlaced(Map<String, Object> order) {
         try {
-            String orderId = ref(order);
+        	String orderId = order.get("id") != null ? order.get("id").toString() : "";
             String storeId = str(order, "storeId");
             String customerId = str(order, "userId");
+            String orderRef = str(order, "orderRef");
 
             Map<String, Object> data = orderData(orderId, storeId);
 
             if (customerId != null) {
                 dispatch.notifyUser(customerId, "customer", storeId,
                         "Order placed successfully",
-                        "Your order " + orderId + " has been placed successfully.",
+                        "Your order " + orderRef + " has been placed successfully.",
                         TYPE_ORDER, data, true);
             }
 
             if (storeId != null) {
-                String body = "New order " + orderId + " received";
+                String body = "New order " + orderRef + " received";
                 dispatch.notifyUsers(storeStaffAndOwner(storeId), "New Order", body, TYPE_ORDER, data, true);
             }
         } catch (Exception e) {
@@ -68,19 +70,20 @@ public class OrderNotificationService {
     /** Order status changed (accepted / partially accepted / dispatched / delivered / cancelled). */
     public void notifyOrderStatusChanged(Map<String, Object> order, String newStatus) {
         try {
-            String orderId = ref(order);
-            String storeId = str(order, "storeId");
-            String customerId = str(order, "userId");
+        	String orderId = order.get("id") != null ? order.get("id").toString() : "";
+			String storeId = str(order, "storeId");
+			String customerId = str(order, "userId");
+			String orderRef = str(order, "orderRef");
             if (customerId == null) return;
 
             Map<String, Object> data = orderData(orderId, storeId);
-            String[] titleBody = messageFor(newStatus, orderId);
+            String[] titleBody = messageFor(newStatus, orderRef);
 
             dispatch.notifyUser(customerId, "customer", storeId, titleBody[0], titleBody[1],
                     TYPE_ORDER, data, true);
         } catch (Exception e) {
             log.warn("notifyOrderStatusChanged failed (non-fatal) for order {}: {}",
-                    order.get("orderId"), e.getMessage());
+                    order.get("orderRef"), e.getMessage());
         }
     }
 
@@ -90,9 +93,10 @@ public class OrderNotificationService {
         try {
             String orderId = ref(order);
             String storeId = str(order, "storeId");
+            String orderRef = str(order, "orderRef");
             dispatch.notifyUser(agentUserId, "employee", storeId,
                     "Delivery assigned",
-                    "Order " + orderId + " assigned to you",
+                    "Order " + orderRef + " assigned to you",
                     TYPE_ORDER, orderData(orderId, storeId), true);
         } catch (Exception e) {
             log.warn("notifyDeliveryAssigned failed (non-fatal): {}", e.getMessage());
@@ -140,7 +144,7 @@ public class OrderNotificationService {
     }
 
     private String ref(Map<String, Object> order) {
-        Object ref = order.get("orderRef") != null ? order.get("orderRef") : order.get("orderId");
+        Object ref = order.get("orderId") != null ? order.get("orderId") : order.get("orderRef");
         return ref == null ? "" : ref.toString();
     }
 

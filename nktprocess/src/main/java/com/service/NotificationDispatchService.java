@@ -180,7 +180,7 @@ public class NotificationDispatchService {
         // before — a single shared payload can't carry a different id per
         // recipient without splitting into one Firebase call per recipient.
         String singleNotificationId = null;
-        if (recipientsForHistory != null && recipientsForHistory.size() == 1) {
+        if (recipientsForHistory != null && recipientsForHistory.size() != 0) {
             Recipient only = recipientsForHistory.get(0);
             singleNotificationId = recordHistory(only.userId(), only.storeId(), notificationType, title, body, extra);
         }

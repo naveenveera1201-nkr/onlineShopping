@@ -17,6 +17,8 @@ import org.springframework.util.CollectionUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.repository.NktDynamicRepository;
 import com.security.JwtTokenProvider;
+import com.service.FirebaseAuthService;
+import com.service.FirebaseNotificationService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,14 @@ import lombok.extern.slf4j.Slf4j;
  * Handles all 6 authentication operations.
  *  AUTH_SEND_OTP, AUTH_VERIFY_OTP, AUTH_REFRESH_TOKEN,
  *  AUTH_ENROL_BIOMETRIC, AUTH_VERIFY_BIOMETRIC, AUTH_LOGOUT
+ *
+ * identifierType == "phone" is verified via Firebase Phone Authentication
+ * (see {@link FirebaseAuthService}) — the SMS itself is sent and checked
+ * entirely by the client SDK, so AUTH_SEND_OTP for a phone identifier is
+ * just the eligibility pre-check below, and AUTH_VERIFY_OTP verifies the
+ * Firebase idToken the client obtained instead of an otp_records row.
+ * identifierType == "email" (or anything else) keeps the original
+ * self-issued OTP flow unchanged.
  */
 @Component
 @RequiredArgsConstructor
@@ -38,6 +48,7 @@ public class NktAuthHandler {
     private String dummy;
 
     private final JwtTokenProvider jwt;
+    private final FirebaseAuthService firebaseAuthService;
 
 	private String str(Map<String, Object> d, String k) {
 		Object v = d.get(k);
@@ -58,6 +69,7 @@ public class NktAuthHandler {
 		return (data, userId, repo, mapper, def) -> {
 			
 			String identifier = str(data, "identifier");
+			String identifierType = str(data, "identifierType");
 			String purpose = str(data, "purpose");
 			String userType = str(data, "userType");
 
@@ -75,15 +87,28 @@ public class NktAuthHandler {
 				return json(mapper, Map.of("statusCode", "N400", "statusDesc",
 						userType + " User not found. Please register first"));
 			}
-			
+
+			// Phone identifiers: Firebase Phone Authentication sends and checks the
+			// SMS itself, on the client — there is no server-side "send" call for
+			// it. The eligibility pre-check above is this endpoint's whole job now;
+			// the client proceeds straight to the Firebase Phone Auth SDK to
+			// actually trigger the SMS, then calls AUTH_VERIFY_OTP with the
+			// resulting idToken.
+			if (dummy.equals("N") && "phone".equalsIgnoreCase(identifierType)) {
+				return json(mapper, Map.of("statusCode", "N200", "statusDesc",
+						"Eligible to proceed. Verify this phone number with Firebase on the client, "
+								+ "then call AUTH_VERIFY_OTP with the resulting idToken."));
+			}
+
+			// Email (and any other non-phone identifierType): unchanged legacy flow.
 			String otp = String.format("%04d", new Random().nextInt(10000));
 			repo.deleteAll("otp_records", Map.of("identifier", identifier));
 
 			Map<String, Object> rec = new LinkedHashMap<>();
 			rec.put("identifier", identifier);
-			rec.put("identifierType", str(data, "identifierType"));
+			rec.put("identifierType", identifierType);
 			rec.put("otp", otp);
-			rec.put("userType", str(data, "userType"));
+			rec.put("userType", userType);
 			rec.put("purpose", purpose);
 			rec.put("used", false);
 			rec.put("attempts", 0);
@@ -100,59 +125,98 @@ public class NktAuthHandler {
 	public NktOperationHandler verifyOtp() {
         return (data, userId, repo, mapper, def) -> {
             String identifier = str(data, "identifier");
-            String otp = str(data, "otp");
+            String identifierType = str(data, "identifierType");
             String purpose = str(data, "purpose");
             String userType = str(data, "userType");
 
-            Map<String, Object> rec = repo.findOneByCriteria("otp_records",
-                    Map.of("identifier", identifier, "used", false, "userType", userType)).orElse(null);
+            if (dummy.equals("N") && "phone".equalsIgnoreCase(identifierType)) {
 
-            if (rec == null) {
-                return json(mapper, Map.of(
-                        "statusCode", "N400",
-                        "statusDesc", "OTP not found or expired"
-                ));
-            }
-
-            String tableName = rec.get("userType") + def.getCollection();
-
-            LocalDateTime createdAt = LocalDateTime.parse(rec.get("createdAt").toString());
-
-            LocalDateTime expiryTime = createdAt.plusMinutes(otpExpiration != null ? Long.parseLong(otpExpiration) : 3);
-
-            if (!dummy.equals("Y")) {
-
-                if (LocalDateTime.now().isAfter(expiryTime)) {
-
-                    // mark as used/expired (optional but recommended)
-                    repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false), Map.of("used", true));
-
-                    return json(mapper, Map.of("statusCode", "N400", "statusDesc", "OTP expired"));
+                // ── Firebase Phone Authentication path ─────────────────────
+                // The client already ran the SMS challenge itself via the
+                // Firebase SDK and hands us its idToken; we only need to
+                // confirm Firebase issued it and that it really covers this
+                // identifier. No otp_records involved at all.
+                String idToken = str(data, "otp");
+                if (idToken == null || idToken.isBlank()) {
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc", "idToken is required"));
                 }
 
-                if (!otp.equals(rec.get("otp"))) {
-
-                    int attempts = (int) rec.get("attempts") + 1;
-
-                    repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false),
-                            Map.of("attempts", attempts));
-
-                    return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
+                java.util.Optional<String> verifiedPhone = firebaseAuthService.verifyPhoneIdToken(idToken);
+                if (verifiedPhone.isEmpty()) {
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc",
+                            "Invalid or expired Firebase idToken"));
                 }
+
+                String normalizedVerified = normalizeIndianPhoneNumber(verifiedPhone.get());
+                String normalizedRequested = normalizeIndianPhoneNumber(identifier);
+                if (!normalizedVerified.equals(normalizedRequested)) {
+                    log.warn("Firebase-verified phone {} does not match requested identifier {}",
+                            FirebaseNotificationService.mask(verifiedPhone.get()), identifier);
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc",
+                            "Verified phone number does not match identifier"));
+                }
+
+                log.info("Firebase phone OTP verified for {}", identifier);
 
             } else {
-                if (identifier.trim().equalsIgnoreCase("9876543210") && otp.trim().equals("1234")) {
-                    log.info("Dummy OTP {} verified for {}", otp, identifier);
-                } else if (otp.equals(identifier.substring(Math.max(0, identifier.length() - 4)))) {
-                    log.info("OTP {} verified for {}", otp, identifier);
-                } else {
-                    return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
+
+                // ── Legacy self-issued OTP path (email, or anything non-phone) ──
+                String otp = str(data, "otp");
+                if (otp == null || otp.isBlank()) {
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc", "otp is required"));
                 }
+
+                Map<String, Object> rec = repo.findOneByCriteria("otp_records",
+                        Map.of("identifier", identifier, "used", false, "userType", userType)).orElse(null);
+
+                if (rec == null) {
+                    return json(mapper, Map.of(
+                            "statusCode", "N400",
+                            "statusDesc", "OTP not found or expired"
+                    ));
+                }
+
+                LocalDateTime createdAt = LocalDateTime.parse(rec.get("createdAt").toString());
+
+                LocalDateTime expiryTime = createdAt.plusMinutes(otpExpiration != null ? Long.parseLong(otpExpiration) : 3);
+
+                if (!dummy.equals("Y")) {
+
+                    if (LocalDateTime.now().isAfter(expiryTime)) {
+
+                        // mark as used/expired (optional but recommended)
+                        repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false), Map.of("used", true));
+
+                        return json(mapper, Map.of("statusCode", "N400", "statusDesc", "OTP expired"));
+                    }
+
+                    if (!otp.equals(rec.get("otp"))) {
+
+                        int attempts = (int) rec.get("attempts") + 1;
+
+                        repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false),
+                                Map.of("attempts", attempts));
+
+                        return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
+                    }
+
+                } else {
+                    if (identifier.trim().equalsIgnoreCase("9876543210") && otp.trim().equals("1234")) {
+                        log.info("Dummy OTP {} verified for {}", otp, identifier);
+                    } else if (otp.equals(identifier.substring(Math.max(0, identifier.length() - 4)))) {
+                        log.info("OTP {} verified for {}", otp, identifier);
+                    } else {
+                        return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
+                    }
+                }
+
+                repo.updateFirst("otp_records",
+                        Map.of("identifier", identifier, "used", false),
+                        Map.of("used", true, "verifiedAt", LocalDateTime.now().toString()));
             }
 
-            repo.updateFirst("otp_records",
-                    Map.of("identifier", identifier, "used", false),
-                    Map.of("used", true, "verifiedAt", LocalDateTime.now().toString()));
+            // ── Shared post-verification flow (unchanged either way) ───────────
+            String tableName = userType + def.getCollection();
 
             Map<String, Object> user;
             Map<String, Object> store = null; 
@@ -160,10 +224,10 @@ public class NktAuthHandler {
             if ("register".equals(purpose)) {
                 user = new LinkedHashMap<>();
                 user.put("identifier", identifier);
-                user.put("identifierType", rec.get("identifierType"));
+                user.put("identifierType", identifierType);
                 user.put("name", str(data, "name"));
                 user.put("email", str(data, "email"));
-                user.put("userType", rec.get("userType"));
+                user.put("userType", userType);
                 user.put("status", "ACTIVE");
                 user.put("addresses", new ArrayList<>());
                 user.put("favouriteStoreIds", new ArrayList<>());
