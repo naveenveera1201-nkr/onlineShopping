@@ -35,31 +35,51 @@ public class SecurityConfig {
             "/api/v1/stores/**",
             "/api/v1/payments/webhook",
             "/ws/**",
-            "/swagger-ui/**", 
-            "/swagger-ui.html", 
-            "/v3/api-docs/**", 
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
             "/v3/api-docs.yaml"
 
     };
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-       
-		log.info("SecurityFilterChain filterChain method called...");
-    	
-		http
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(PUBLIC_PATHS).permitAll()
-                .requestMatchers("/api/v1/store/**", "/api/v1/store/orders/**").hasRole("STORE")
-                .requestMatchers("/api/v1/customer/**", "/api/v1/orders/**",
-                                 "/api/v1/cart/**", "/api/v1/payments/**",
-                                 "/api/v1/discover/**", "/api/v1/search",
-                                 "/api/v1/location/**").hasAnyRole("CUSTOMER", "STORE")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        log.info("SecurityFilterChain filterChain method called...");
+
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .authorizeHttpRequests(auth -> auth
+
+                        // ✅ ACTUATOR
+                        .requestMatchers("/actuator/**").permitAll()
+
+                        // ✅ PUBLIC
+                        .requestMatchers(PUBLIC_PATHS).permitAll()
+
+                        // ✅ STORE
+                        .requestMatchers("/api/v1/store/**",
+                                "/api/v1/store/orders/**")
+                        .hasRole("STORE")
+
+                        // ✅ CUSTOMER + STORE
+                        .requestMatchers("/api/v1/customer/**",
+                                "/api/v1/orders/**",
+                                "/api/v1/cart/**",
+                                "/api/v1/payments/**",
+                                "/api/v1/discover/**",
+                                "/api/v1/search",
+                                "/api/v1/location/**")
+                        .hasAnyRole("CUSTOMER", "STORE")
+
+                        // ✅ OTHERS
+                        .anyRequest().authenticated())
+
+                .addFilterBefore(jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

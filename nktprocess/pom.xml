@@ -19,7 +19,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<mongodb.driver.version>4.11.1</mongodb.driver.version>
 		<jjwt.version>0.12.5</jjwt.version>
-		<poi.version>5.3.0</poi.version>
+		<spring-cloud.version>2025.0.0</spring-cloud.version>
+
 	</properties>
 	<dependencies>
 		<!--<dependency>
@@ -126,13 +127,13 @@
             <version>${mongodb.driver.version}</version>
         </dependency>-->
 
-        <!-- Jackson for JSON processing -->
-       <!-- <dependency>
+		<!-- Jackson for JSON processing -->
+		<!-- <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>2.15.3</version>
         </dependency>-->
-<!--
+		<!--
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
@@ -140,29 +141,30 @@
             <optional>true</optional>
         </dependency>-->
 
-       <!-- <dependency>
+		<!-- <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>2.0.17</version>
         </dependency>-->
 
-        <!-- Optional: Logback implementation (customer can exclude and use their own) -->
-     <!--   <dependency>
+		<!-- Optional: Logback implementation (customer can exclude and use
+		their own) -->
+		<!--   <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.5.24</version>
             <scope>test</scope>
         </dependency>-->
 
-        <!-- Testing -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <!-- junit-jupiter-api (compile scope) -->
-            <!-- junit-jupiter-params (compile scope) -->
-            <!-- junit-jupiter-engine (runtime scope) -->
-            <scope>test</scope>
-        </dependency>
+		<!-- Testing -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<!-- junit-jupiter-api (compile scope) -->
+			<!-- junit-jupiter-params (compile scope) -->
+			<!-- junit-jupiter-engine (runtime scope) -->
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-junit-jupiter</artifactId>
@@ -180,30 +182,41 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		 <!--AWS SDK v2 S3 Dependency -->
-		<dependency>
+		<!--AWS SDK v2 S3 Dependency -->
+		<!--	<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
-			<version>2.25.15</version> <!-- Use the latest version available -->
-		</dependency>
+			<version>2.25.15</version>  Use the latest version available 
+		</dependency>-->
 		<dependency>
 			<groupId>com.google.firebase</groupId>
 			<artifactId>firebase-admin</artifactId>
 			<version>9.10.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-dependencies</artifactId>
+			<version>${spring-cloud.version}</version>
+			<type>pom</type>
+			<scope>import</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
 		<!-- ── Apache POI (Excel .xlsx reading) ─────────────────────────────
 		     Added for EXCEL_STOCK_MASTER_IMPORT. poi-ooxml pulls in poi (core)
 		     and poi-ooxml-lite/xmlbeans transitively — no other Excel-reading
 		     library existed anywhere in this project before this feature. -->
-		<dependency>
+		<!--<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
 			<version>${poi.version}</version>
-		</dependency>
+		</dependency>-->
 	</dependencies>
 	<build>
-	 <finalName>nktprocess</finalName>
+		<finalName>nktprocess</finalName>
 		<plugins>
 
 			<plugin>

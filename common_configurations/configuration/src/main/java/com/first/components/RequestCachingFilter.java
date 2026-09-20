@@ -140,6 +140,14 @@ public class RequestCachingFilter extends OncePerRequestFilter {
                 new ContentCachingRequestWrapper(request, maxPayloadLogBytes);
         ContentCachingResponseWrapper wrappedResp =
                 new ContentCachingResponseWrapper(response);
+        
+        String path = wrappedReq.getRequestURI();
+
+        if (path.startsWith("/actuator")) {
+            chain.doFilter(wrappedReq, wrappedResp);
+            wrappedResp.copyBodyToResponse();
+            return;
+        }
 
         long start = System.currentTimeMillis();
 

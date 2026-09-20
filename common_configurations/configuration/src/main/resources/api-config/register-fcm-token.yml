@@ -29,7 +29,7 @@ apis:
       - name: storeId
         type: String
         location: BODY
-        required: true
+        required: false
       - name: userType
         type: String
         location: BODY

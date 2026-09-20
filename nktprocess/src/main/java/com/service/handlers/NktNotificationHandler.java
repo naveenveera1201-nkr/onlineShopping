@@ -419,6 +419,8 @@ public class NktNotificationHandler {
                     .map(e -> str(e, "storeId")).orElse(null);
             case "business" -> repo.findOne("stores", "userId", userId)
                     .map(s -> str(s, "storeId")).orElse(null);
+            case "customer" -> repo.findOne("stores", "userId", userId)
+            .map(s -> str(s, "storeId")).orElse(null);
             default -> null;
         };
     }

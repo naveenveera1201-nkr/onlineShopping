@@ -202,7 +202,7 @@ public class NktAuthHandler {
             return json(mapper, Map.of("data", Map.of(
                     "accessToken", accessToken,
                     "refreshToken", refreshToken,
-                    "storeId", store != null ? store.get("storeId") : null,
+                    "storeId", store != null ? store.get("storeId") : "",
                     "userId", uid,
                     "userType", utyp,
                     "statusCode", "N200",
