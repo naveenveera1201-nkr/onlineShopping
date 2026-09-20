@@ -2,11 +2,9 @@ package com.controller;
 
 import java.util.Map;
 
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.resource.ProcessEngineResource;
 import com.service.NktCoreService;
@@ -31,14 +29,13 @@ public class ProcessEngineController implements ProcessEngineResource {
     private final ObjectMapper   mapper;
 
     @Override
-    public String process(@RequestParam("data") String data,
-                          @RequestParam("code") String code) {
+	public String process(Map<String, Object> dataMap, String code) {
 
         log.info("ProcessEngineController.process: code={}", code);
 
         try {
-            Map<String, Object> dataMap = mapper.readValue(
-                    data, new TypeReference<Map<String, Object>>() {});
+//            Map<String, Object> dataMap = mapper.readValue(
+//                    data, new TypeReference<Map<String, Object>>() {});
 
             // All NKT no-code platform codes → NktCoreService
             if (code != null && code.startsWith("nkt.")) {
@@ -61,4 +58,5 @@ public class ProcessEngineController implements ProcessEngineResource {
             }
         }
     }
+
 }

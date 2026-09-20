@@ -11,7 +11,7 @@ apis:
         enabled: true
         type: JWT
         roles:
-        - STORE
+        - business
       authorization:
         enabled: true
       rateLimit:
@@ -56,7 +56,7 @@ apis:
         description: Actor who performed the update
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: p138
+      processCode: nkt.store_profile.toggle
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:

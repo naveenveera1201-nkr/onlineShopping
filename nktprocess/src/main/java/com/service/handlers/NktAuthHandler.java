@@ -97,15 +97,15 @@ public class NktAuthHandler {
 	}
 
     /* ── AUTH_VERIFY_OTP ────────────────────────────────────────────────── */
-    public NktOperationHandler verifyOtp() {
+	public NktOperationHandler verifyOtp() {
         return (data, userId, repo, mapper, def) -> {
             String identifier = str(data, "identifier");
-            String otp        = str(data, "otp");
-            String purpose    = str(data, "purpose");
-            String userType   =  str(data, "userType");
-            
-			Map<String, Object> rec = repo.findOneByCriteria("otp_records",
-					Map.of("identifier", identifier, "used", false, "userType", userType)).orElse(null);
+            String otp = str(data, "otp");
+            String purpose = str(data, "purpose");
+            String userType = str(data, "userType");
+
+            Map<String, Object> rec = repo.findOneByCriteria("otp_records",
+                    Map.of("identifier", identifier, "used", false, "userType", userType)).orElse(null);
 
             if (rec == null) {
                 return json(mapper, Map.of(
@@ -115,88 +115,128 @@ public class NktAuthHandler {
             }
 
             String tableName = rec.get("userType") + def.getCollection();
-            
-			LocalDateTime createdAt = LocalDateTime.parse(rec.get("createdAt").toString());
 
-			LocalDateTime expiryTime = createdAt.plusMinutes(otpExpiration != null ? Long.parseLong(otpExpiration) : 3);
+            LocalDateTime createdAt = LocalDateTime.parse(rec.get("createdAt").toString());
 
-			if (!dummy.equals("Y")) {
-				
-				if (LocalDateTime.now().isAfter(expiryTime)) {
-					
-					// mark as used/expired (optional but recommended)
-					repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false), Map.of("used", true));
-					
-					return json(mapper, Map.of("statusCode", "N400", "statusDesc", "OTP expired"));
-				}
-				
-				if (!otp.equals(rec.get("otp"))) {
+            LocalDateTime expiryTime = createdAt.plusMinutes(otpExpiration != null ? Long.parseLong(otpExpiration) : 3);
 
-					int attempts = (int) rec.get("attempts") + 1;
+            if (!dummy.equals("Y")) {
 
-					repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false),
-							Map.of("attempts", attempts));
+                if (LocalDateTime.now().isAfter(expiryTime)) {
 
-//				return json(mapper, Map.of("status", "Failed", "message", "Invalid OTP"));
-//				throw new RuntimeException("Invalid OTP");
-					return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
-				}
+                    // mark as used/expired (optional but recommended)
+                    repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false), Map.of("used", true));
 
-			} else {
-				if (otp.equals(identifier.substring(Math.max(0, identifier.length() - 4)))) {
-					log.info("OTP {} verified for {}", otp, identifier);
-				} else {
-					return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
+                    return json(mapper, Map.of("statusCode", "N400", "statusDesc", "OTP expired"));
+                }
 
-				}
-			}
+                if (!otp.equals(rec.get("otp"))) {
+
+                    int attempts = (int) rec.get("attempts") + 1;
+
+                    repo.updateFirst("otp_records", Map.of("identifier", identifier, "used", false),
+                            Map.of("attempts", attempts));
+
+                    return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
+                }
+
+            } else {
+                if (identifier.trim().equalsIgnoreCase("9876543210") && otp.trim().equals("1234")) {
+                    log.info("Dummy OTP {} verified for {}", otp, identifier);
+                } else if (otp.equals(identifier.substring(Math.max(0, identifier.length() - 4)))) {
+                    log.info("OTP {} verified for {}", otp, identifier);
+                } else {
+                    return json(mapper, Map.of("messsage", "Invalid OTP", "status", "Failed", "statusCode", "N400"));
+                }
+            }
 
             repo.updateFirst("otp_records",
                     Map.of("identifier", identifier, "used", false),
                     Map.of("used", true, "verifiedAt", LocalDateTime.now().toString()));
-            
+
             Map<String, Object> user;
-            
+            Map<String, Object> store = null; 
+
             if ("register".equals(purpose)) {
                 user = new LinkedHashMap<>();
-                user.put("identifier",     identifier);
+                user.put("identifier", identifier);
                 user.put("identifierType", rec.get("identifierType"));
-                user.put("name",           str(data, "name"));
-                user.put("email",          str(data, "email"));
-                user.put("userType",       rec.get("userType"));
-                user.put("status",         "ACTIVE");
-                user.put("addresses",      new ArrayList<>());
+                user.put("name", str(data, "name"));
+                user.put("email", str(data, "email"));
+                user.put("userType", rec.get("userType"));
+                user.put("status", "ACTIVE");
+                user.put("addresses", new ArrayList<>());
                 user.put("favouriteStoreIds", new ArrayList<>());
-                user.put("createdAt",      LocalDateTime.now().toString());
-                user.put("createdBy",      "SYSTEM");
+                user.put("createdAt", LocalDateTime.now().toString());
+                user.put("createdBy", "SYSTEM");
 
-				user = repo.insert(tableName, user);
+                user = repo.insert(tableName, user);
             } else {
-				user = repo.findOne(tableName, "identifier", identifier).orElse(null);
-				if (user == null) {
-					return json(mapper, Map.of("statusCode", "N400", "messsage", "User not found", "status", "Failed"));
-				}
+                user = repo.findOne(tableName, "identifier", identifier).orElse(null);
+                if (user == null) {
+                    return json(mapper, Map.of("statusCode", "N400", "messsage", "User not found", "status", "Failed"));
+                }
             }
+            
+			if ("business".equalsIgnoreCase(userType)) {
 
-            String uid  = user.get("id").toString();
+				String phoneNumber = normalizeIndianPhoneNumber(identifier);
+
+				store = repo.findOne("stores", "identifier", phoneNumber).orElse(null);
+
+				if (store == null) {
+					return json(mapper, Map.of("statusCode", "N400", "message", "Store not found for business user",
+							"status", "Failed"));
+				}
+			}
+
+            String uid = user.get("id").toString();
             String utyp = user.get("userType").toString();
             String jti = java.util.UUID.randomUUID().toString();
 
-            String accessToken  = jwt.generateAccessToken(uid, utyp, jti);
+            String accessToken = jwt.generateAccessToken(uid, utyp, jti);
             String refreshToken = jwt.generateRefreshToken(uid, jti);
-            
+
             insertToken(repo, uid, utyp, jti, accessToken, refreshToken);
-           
+
             return json(mapper, Map.of("data", Map.of(
-            		"accessToken", accessToken, 
-            		"refreshToken", refreshToken,
-					"userId", uid,
-					"userType", utyp,
-					"statusCode", "N200",
-					"statusDesc", "Success")));
-	        
+                    "accessToken", accessToken,
+                    "refreshToken", refreshToken,
+                    "storeId", store != null ? store.get("storeId") : null,
+                    "userId", uid,
+                    "userType", utyp,
+                    "statusCode", "N200",
+                    "statusDesc", "Success")));
+
         };
     }
+	
+	private String normalizeIndianPhoneNumber(String identifier) {
+
+		if (identifier == null || identifier.isBlank()) {
+			return identifier;
+		}
+
+		// Remove spaces, hyphens, brackets, etc.
+		String phone = identifier.trim().replaceAll("[^0-9+]", "");
+
+		// +91XXXXXXXXXX -> XXXXXXXXXX
+		if (phone.startsWith("+91")) {
+			phone = phone.substring(3);
+		}
+
+		// 91XXXXXXXXXX -> XXXXXXXXXX
+		else if (phone.startsWith("91") && phone.length() == 12) {
+			phone = phone.substring(2);
+		}
+
+		// 0XXXXXXXXXX -> XXXXXXXXXX
+		else if (phone.startsWith("0") && phone.length() == 11) {
+			phone = phone.substring(1);
+		}
+
+		return phone;
+	}
 
 	public void insertToken(NktDynamicRepository repo, String uid, String utyp, String jti, String accessToken,
 			String refreshToken) {

@@ -10,11 +10,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.feign.ProcessEngineClients;
 import com.first.dto.ApiDefinition;
 import com.first.dto.BusinessLogicConfig;
 import com.first.functionalInterface.ProcessFlowInterface;
@@ -30,7 +30,8 @@ public class BusinessLogicExecutor {
     private final DatabaseExecutor      databaseExecutor;
     private final ExternalApiExecutor   externalApiExecutor;
     private final CallbackExecutor      callbackExecutor;
-    private final ProcessEngineClients  processEngineClient;
+    @Autowired
+    private ProcessEngineClient processEngineClient;
     private final ObjectMapper          mapper;
 
     // ── Main dispatch ─────────────────────────────────────────────────────────
@@ -66,9 +67,9 @@ public class BusinessLogicExecutor {
 
 	private Map<String, Object> executeCustomService(BusinessLogicConfig config, Map<String, Object> params) {
 		try {
-			String json = mapper.writeValueAsString(params);
+//			String json = mapper.writeValueAsString(params);
 			ProcessFlowInterface call = processEngineClient::process;
-			String result = call.execute(json, config.getProcessCode());
+			String result = call.execute(params, config.getProcessCode());
 			log.info("resposne :: {}", result);
 			return mapper.readValue(result, new TypeReference<Map<String, Object>>() {
 			});

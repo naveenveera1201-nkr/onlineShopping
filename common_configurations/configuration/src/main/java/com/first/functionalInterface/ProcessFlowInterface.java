@@ -1,6 +1,8 @@
 package com.first.functionalInterface;
 
+import java.util.Map;
+
 @FunctionalInterface
 public interface ProcessFlowInterface {
-	public String execute(String data, String code);
+	public String execute( Map<String, Object> data, String code);
 }
