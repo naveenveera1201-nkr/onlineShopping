@@ -2,9 +2,11 @@ package com.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -180,26 +182,33 @@ public class NotificationDispatchService {
         // before — a single shared payload can't carry a different id per
         // recipient without splitting into one Firebase call per recipient.
         String singleNotificationId = null;
-        if (recipientsForHistory != null && recipientsForHistory.size() != 0) {
-            Recipient only = recipientsForHistory.get(0);
-            singleNotificationId = recordHistory(only.userId(), only.storeId(), notificationType, title, body, extra);
-        }
+		if (recipientsForHistory != null && !recipientsForHistory.isEmpty()) {
+//            Recipient only = recipientsForHistory.get(0);
+			Recipient firstRecipient = recipientsForHistory.get(0);
+			String userIds = recipientsForHistory.stream().map(Recipient::userId).distinct()
+					.collect(Collectors.joining(","));
+			singleNotificationId = recordHistory(userIds, firstRecipient.storeId(), notificationType, title, body,
+					extra);
+		}
 
-        Map<String, String> data = dataPayload(notificationType, extra);
-        if (singleNotificationId != null) {
-            data.put("notificationId", singleNotificationId);
-        }
+		Map<String, String> data = dataPayload(notificationType, extra);
+		
+		if (singleNotificationId != null) {
+			data.put("notificationId", singleNotificationId);
+		}
+		
         FcmSendResult result = firebase.sendToMultipleDevices(tokens, title, body, data);
 
         for (String invalid : result.getInvalidTokens()) {
             deactivateToken(invalid);
         }
 
-        if (recipientsForHistory != null && recipientsForHistory.size() != 1) {
-            for (Recipient r : recipientsForHistory) {
-                recordHistory(r.userId(), r.storeId(), notificationType, title, body, extra);
-            }
-        }
+//        if (recipientsForHistory != null && recipientsForHistory.size() != 1) {
+//            for (Recipient r : recipientsForHistory) {
+//                recordHistory(r.userId(), r.storeId(), notificationType, title, body, extra);
+//            }
+//        }
+        
         return result;
     }
 
@@ -263,18 +272,22 @@ public class NotificationDispatchService {
      * second call on an already-read notification is a harmless no-op.
      * Ownership-checked: only the userId it was sent to may mark it read.
      */
-    public boolean markAsRead(String notificationId, String userId) {
-        if (notificationId == null || notificationId.isBlank()) return false;
-        Map<String, Object> notif = repo.findById(HISTORY_COLLECTION, notificationId).orElse(null);
-        if (notif == null) return false;
-        if (userId != null && !userId.equals(str(notif, "userId"))) return false;
-        if ("READ".equals(str(notif, "status"))) return true;
+	public boolean markAsRead(String notificationId, String userId) {
+		if (notificationId == null || notificationId.isBlank())
+			return false;
+		Map<String, Object> notif = repo.findById(HISTORY_COLLECTION, notificationId).orElse(null);
+		if (notif == null)
+			return false;
+//		if (userId != null && !userId.equals(str(notif, "userId"))) 
+		if (userId != null && !Arrays.asList(str(notif, "userId").split(",")).contains(userId))
+			return false;
+		if ("READ".equals(str(notif, "status")))
+			return true;
 
-        repo.updateById(HISTORY_COLLECTION, notificationId, Map.of(
-                "status", "READ",
-                "readAt", LocalDateTime.now().toString()));
-        return true;
-    }
+		repo.updateById(HISTORY_COLLECTION, notificationId,
+				Map.of("status", "READ", "readAt", LocalDateTime.now().toString()));
+		return true;
+	}
 
     /**
      * Notifications still {@code status=SENT} (not yet marked read) whose
@@ -303,7 +316,7 @@ public class NotificationDispatchService {
         if (notif == null) return;
 
         String userId = str(notif, "userId");
-        List<Map<String, Object>> devices = activeDevicesFor(userId);
+		List<Map<String, Object>> devices = activeDevicesFor(Arrays.asList(userId.split(",")));
         int retryCount = notif.get("retryCount") instanceof Number n ? n.intValue() : 0;
 
         if (devices.isEmpty()) {

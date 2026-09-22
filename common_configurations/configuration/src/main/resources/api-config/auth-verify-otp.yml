@@ -62,6 +62,10 @@ apis:
         validation:
           pattern: ^(register|login)$
           errorMessage: purpose must be 'register' or 'login'
+      - name: idToken
+        type: String
+        location: BODY
+        required: false
       - name: name
         type: String
         location: BODY

@@ -136,7 +136,7 @@ public class NktAuthHandler {
                 // Firebase SDK and hands us its idToken; we only need to
                 // confirm Firebase issued it and that it really covers this
                 // identifier. No otp_records involved at all.
-                String idToken = str(data, "otp");
+                String idToken = str(data, "idToken");
                 if (idToken == null || idToken.isBlank()) {
                     return json(mapper, Map.of("statusCode", "N400", "statusDesc", "idToken is required"));
                 }

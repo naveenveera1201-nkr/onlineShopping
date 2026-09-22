@@ -995,7 +995,8 @@
 			"UserIdField": "customerId",
 			"allowedRoles": [
 				"customer",
-				"business"
+				"business",
+				"employee"
 			]
 		},
 		{
