@@ -590,7 +590,8 @@
 		{
 			"Code": "nkt.wishlist.get",
 			"Collection": "wishlist",
-			"Operation": "FIND_ALL",
+			"Operation": "CUSTOM",
+			"HandlerKey": "GET_WISHLIST",
 			"Protected": true,
 			"StaticCriteria": {
 				"status": "ACTIVE"
@@ -627,7 +628,9 @@
 			"RequiredFields": [
 				"storeId",
 				"stockId",
-				"stockCount"
+				"stockCount",
+				"latitude",
+				"longitude"
 			],
 			"allowedRoles": [
 				"customer",

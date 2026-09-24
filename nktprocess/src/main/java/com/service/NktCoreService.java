@@ -170,6 +170,7 @@ public class NktCoreService {
         handlers.put("WISHLIST_TOGGLE",        orderHandler.wishlistToggle());
 		handlers.put("CUSTOMER_ORDER_DETAILS", orderHandler.customerOrdersList());
 		handlers.put("CUSTOMER_ORDER_VIEW", orderHandler.orderGetDetail());
+		handlers.put("GET_WISHLIST",        orderHandler.getWishlist());
 
         // Payments
         handlers.put("PAYMENT_INITIATE", paymentHandler.initiatePayment());

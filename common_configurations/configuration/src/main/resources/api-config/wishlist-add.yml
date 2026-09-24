@@ -1,10 +1,10 @@
 apis:
-  - id: wishlist-add
-    name: Add Item to Wishlist
+  - id: wishlist-get
+    name: Get Wishlist Items
     version: v1
-    method: POST
-    path: /api/v1/customer/wishlist/{itemId}
-    description: Adds an item to the customer's wishlist. Idempotent — no error if item already saved.
+    method: GET
+    path: /api/v1/customer/wishlist
+    description: Returns all items the customer has saved (heart-marked), with current price and availability status.
     enabled: true
     security:
       authentication:
@@ -31,41 +31,57 @@ apis:
         validation:
           minLength: 1
           errorMessage: Item ID is required
+      - name: latitude
+        type: Double
+        location: BODY
+        required: true
+        validation:
+          min: -90.0
+          max: 90.0
+          errorMessage: Latitude must be between -90 and 90
+      - name: longitude
+        type: Double
+        location: BODY
+        required: true
+        validation:
+          min: -180.0
+          max: 180.0
+          errorMessage: Longitude must be between -180 and 180
+      - name: radiusKm
+        type: Double
+        location: BODY
+        required: false
+        defaultValue: '5'
+        validation:
+          min: 0.1
+          max: 50.0
+          errorMessage: Radius must be between 0.1 and 50 km
     response:
       successCode: 200
       contentType: application/json
       fields:
       - name: id
         type: Long
-        description: Generated WishlistItem ID
+        description: WishlistItem identifier
       - name: history
         type: String
         description: history
       - name: data
         type: String
-        description: registered data
+        description: response data
       - name: currentStatus
         type: String
-        description: Record status
+        description: Current record status
         defaultValue: ACTIVE
-      - name: createdAt
+      - name: fetchedAt
         type: LocalDateTime
-        description: Creation timestamp
-      - name: createdBy
-        type: String
-        description: created by
+        description: Data retrieval timestamp
     businessLogic:
       businessLogicRequired: "Y"
-      processCode: nkt.wishlist.add
+      processCode: nkt.wishlist.get
       type: CUSTOM_SERVICE
       dataSource: primaryDb
       operations:
-      - type: INSERT
+      - type: SELECT
         entity: WishlistItem
-        mapping:
-          createdAt: "#{now()}"
-          status: ACTIVE
-    callbacks:
-    - event: SUCCESS
-      type: WEBHOOK
-      url: "https://api.nammakadaitheru.in/webhooks/wishlistitem-event"
+    

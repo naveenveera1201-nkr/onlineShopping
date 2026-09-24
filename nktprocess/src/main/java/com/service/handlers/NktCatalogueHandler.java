@@ -1132,82 +1132,166 @@ public class NktCatalogueHandler {
 		return result.isEmpty() ? null : result;
 	}
     
-    public NktOperationHandler getSubCategories() {
-        return (data, userId, repo, mapper, def) -> {
+//    public NktOperationHandler getSubCategories() {
+//        return (data, userId, repo, mapper, def) -> {
+//
+//            String storeId = str(data, "storeId");
+//            String categoryId = str(data, "categoryId");
+//
+//            if (storeId == null || categoryId == null) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N400",
+//                        "statusDesc", "storeId & categoryId required"
+//                ));
+//            }
+//
+//            Map<String, Object> store = repo
+//                    .findOne("stores", "storeId", storeId)
+//                    .orElse(null);
+//
+//            if (store == null) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N404",
+//                        "statusDesc", "Store not found"
+//                ));
+//            }
+//
+//            List<Map<String, Object>> categories =
+//                    (List<Map<String, Object>>) store.get("categories");
+//
+//            Map<String, Object> targetCategory = categories.stream()
+//                    .filter(c -> categoryId.equals(c.get("categoryId")))
+//                    .findFirst()
+//                    .orElse(null);
+//
+//            if (targetCategory == null) {
+//                return json(mapper, Map.of(
+//                        "data", Collections.emptyList(),
+//                        "statusCode", "N200"
+//                ));
+//            }
+//
+//            List<Map<String, Object>> subCats =
+//                    (List<Map<String, Object>>) targetCategory.getOrDefault("subCategories", new ArrayList<>());
+//
+//            // Fetch master subcategories
+//            List<Map<String, Object>> allSubs =
+//                    repo.findAll("sub_categories", Map.of("status", "ACTIVE"));
+//
+//            Map<String, Map<String, Object>> subMap = allSubs.stream()
+//                    .collect(Collectors.toMap(s -> s.get("subcategoryId").toString(), s -> s));
+//
+//            List<Map<String, Object>> result = new ArrayList<>();
+//
+//            for (Map<String, Object> sc : subCats) {
+//
+//                String subId = sc.get("subcategoryId").toString();
+//                Map<String, Object> master = subMap.get(subId);
+//
+//                if (master == null) continue;
+//
+//                Map<String, Object> obj = new LinkedHashMap<>();
+//                obj.put("subcategoryId", subId);
+//                obj.put("name", master.get("name"));
+//                obj.put("subCategoryName", master.get("subCategoryName"));
+//
+//                obj.put("icon", enrichImages(master.get("icon")));
+//
+//                result.add(obj);
+//            }
+//
+//            return json(mapper, Map.of(
+//                    "data", result,
+//                    "count", result.size(),
+//                    "statusCode", "N200",
+//                    "statusDesc", "Success"
+//            ));
+//        };
+//    }
+	
+	public NktOperationHandler getSubCategories() {
 
-            String storeId = str(data, "storeId");
-            String categoryId = str(data, "categoryId");
+		return (data, userId, repo, mapper, def) -> {
 
-            if (storeId == null || categoryId == null) {
-                return json(mapper, Map.of(
-                        "statusCode", "N400",
-                        "statusDesc", "storeId & categoryId required"
-                ));
-            }
+			String storeId = str(data, "storeId");
+			String categoryId = str(data, "categoryId");
 
-            Map<String, Object> store = repo
-                    .findOne("stores", "storeId", storeId)
-                    .orElse(null);
+			if (storeId == null || categoryId == null) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "storeId & categoryId required"));
+			}
 
-            if (store == null) {
-                return json(mapper, Map.of(
-                        "statusCode", "N404",
-                        "statusDesc", "Store not found"
-                ));
-            }
+			// ---------------------------------------------------------
+			// 1. Validate store
+			// ---------------------------------------------------------
+			Map<String, Object> store = repo.findOne("stores", "storeId", storeId).orElse(null);
 
-            List<Map<String, Object>> categories =
-                    (List<Map<String, Object>>) store.get("categories");
+			if (store == null) {
+				return json(mapper, Map.of("statusCode", "N404", "statusDesc", "Store not found"));
+			}
 
-            Map<String, Object> targetCategory = categories.stream()
-                    .filter(c -> categoryId.equals(c.get("categoryId")))
-                    .findFirst()
-                    .orElse(null);
+			// ---------------------------------------------------------
+			// 2. Get ACTIVE stocks for store + category
+			// ---------------------------------------------------------
+			List<Map<String, Object>> stocks = repo.findAll("stocks",
+					Map.of("storeId", storeId, "categoryId", categoryId, "status", "ACTIVE"));
 
-            if (targetCategory == null) {
-                return json(mapper, Map.of(
-                        "data", Collections.emptyList(),
-                        "statusCode", "N200"
-                ));
-            }
+			// ---------------------------------------------------------
+			// 3. Extract unique subcategory IDs from stocks
+			// ---------------------------------------------------------
+			Set<String> subcategoryIds = stocks.stream().map(stock -> stock.get("subCategoryId"))
+					.filter(Objects::nonNull).map(Object::toString).filter(id -> !id.isBlank())
+					.collect(Collectors.toCollection(LinkedHashSet::new));
 
-            List<Map<String, Object>> subCats =
-                    (List<Map<String, Object>>) targetCategory.getOrDefault("subCategories", new ArrayList<>());
+			// No stocks => no subcategories
+			if (subcategoryIds.isEmpty()) {
+				return json(mapper, Map.of("data", Collections.emptyList(), "count", 0, "statusCode", "N200",
+						"statusDesc", "Success"));
+			}
 
-            // Fetch master subcategories
-            List<Map<String, Object>> allSubs =
-                    repo.findAll("sub_categories", Map.of("status", "ACTIVE"));
+			// ---------------------------------------------------------
+			// 4. Fetch ACTIVE master subcategories
+			// ---------------------------------------------------------
+			List<Map<String, Object>> allSubs = repo.findAll("sub_categories", Map.of("status", "ACTIVE"));
 
-            Map<String, Map<String, Object>> subMap = allSubs.stream()
-                    .collect(Collectors.toMap(s -> s.get("subcategoryId").toString(), s -> s));
+			// ---------------------------------------------------------
+			// 5. Create subcategory lookup map
+			// ---------------------------------------------------------
+			Map<String, Map<String, Object>> subMap = allSubs.stream().filter(sub -> sub.get("subcategoryId") != null)
+					.collect(Collectors.toMap(sub -> sub.get("subcategoryId").toString(), sub -> sub,
+							(existing, replacement) -> existing));
 
-            List<Map<String, Object>> result = new ArrayList<>();
+			// ---------------------------------------------------------
+			// 6. Build response based on stock subcategories
+			// ---------------------------------------------------------
+			List<Map<String, Object>> result = new ArrayList<>();
 
-            for (Map<String, Object> sc : subCats) {
+			for (String subcategoryId : subcategoryIds) {
 
-                String subId = sc.get("subcategoryId").toString();
-                Map<String, Object> master = subMap.get(subId);
+				Map<String, Object> master = subMap.get(subcategoryId);
 
-                if (master == null) continue;
+				// Master subcategory doesn't exist / inactive
+				if (master == null) {
+					continue;
+				}
 
-                Map<String, Object> obj = new LinkedHashMap<>();
-                obj.put("subcategoryId", subId);
-                obj.put("name", master.get("name"));
-                obj.put("subCategoryName", master.get("subCategoryName"));
+				Map<String, Object> obj = new LinkedHashMap<>();
 
-                obj.put("icon", enrichImages(master.get("icon")));
+				obj.put("subCategoryId", subcategoryId);
+				obj.put("name", master.get("name"));
+				obj.put("subCategoryName", master.get("subCategoryName"));
+				obj.put("icon", enrichImages(master.get("icon")));
+				obj.put("categoryId", master.get("parentCategoryId"));
 
-                result.add(obj);
-            }
+				result.add(obj);
+			}
 
-            return json(mapper, Map.of(
-                    "data", result,
-                    "count", result.size(),
-                    "statusCode", "N200",
-                    "statusDesc", "Success"
-            ));
-        };
-    }
+			// ---------------------------------------------------------
+			// 7. Response
+			// ---------------------------------------------------------
+			return json(mapper,
+					Map.of("data", result, "count", result.size(), "statusCode", "N200", "statusDesc", "Success"));
+		};
+	}
     
     @SuppressWarnings("unchecked")
     public NktOperationHandler getProductsBySubCategory() {

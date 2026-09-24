@@ -153,14 +153,24 @@ public class NktOrderHandler {
             String addressId = str(data, "addressId");
             String receiverName = str(data, "receiverName");
             String receiverMobileNumber = str(data, "receiverMobileNumber");
+            
+			// ✅ Validate input
+			if (str(data, "latitude") == null || str(data, "longitude") == null) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Latitude and Longitude are required"));
+			}
 
-            // ✅ Validate required fields
-            if (storeId == null || addressId == null) {
-                return json(mapper, Map.of(
-                        "statusCode", "N400",
-                        "statusDesc", "storeId and addressId are required"
-                ));
-            }
+			double lat;
+			double lon;
+
+			try {
+				lat = Double.parseDouble(str(data, "latitude"));
+				lon = Double.parseDouble(str(data, "longitude"));
+			} catch (Exception e) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Invalid latitude/longitude format"));
+			}
+
+			double radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
+			
 
             // ✅ Validate store
             Map<String, Object> store = repo.findOne("stores", "storeId", storeId).orElse(null);
@@ -168,6 +178,38 @@ public class NktOrderHandler {
                 return json(mapper, Map.of(
                         "statusCode", "N404",
                         "statusDesc", "Store not found"
+                ));
+            }
+
+
+			Object addrObj = store.get("location");
+
+			if (!(addrObj instanceof Map))
+				return null;
+
+			@SuppressWarnings("unchecked")
+			Map<String, Object> addr = (Map<String, Object>) addrObj;
+
+			Object sLat = addr.get("latitude");
+			Object sLon = addr.get("longitude");
+
+			if (sLat == null || sLon == null)
+				return null;
+
+			double distance = haversine(lat, lon, Double.parseDouble(sLat.toString()),
+					Double.parseDouble(sLon.toString()));
+
+			// ✅ filter by radius
+			if (distance > radius) {
+				return json(mapper,
+						Map.of("statusCode", "N400", "statusDesc", "store is not within the delivery radius"));
+			}
+
+            // ✅ Validate required fields
+            if (storeId == null || addressId == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N400",
+                        "statusDesc", "storeId and addressId are required"
                 ));
             }
 
@@ -232,7 +274,7 @@ public class NktOrderHandler {
 
 				if (stock == null) {
 					return json(mapper,
-							Map.of("statusCode", "N400", "statusDesc", "Stock not found in store: " + stockId));
+							Map.of("statusCode", "N400", "statusDesc", "Stock not found in store: " + i.get("stockName")));
 				}
 
 				List<Map<String, Object>> units = (List<Map<String, Object>>) stock.get("unit");
@@ -353,6 +395,14 @@ public class NktOrderHandler {
             ));
         };
     }
+
+	private double haversine(double lat1, double lon1, double lat2, double lon2) {
+		final double R = 6371;
+		double dLat = Math.toRadians(lat2 - lat1), dLon = Math.toRadians(lon2 - lon1);
+		double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1))
+				* Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+		return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	}
 
     /* ── ORDER_HISTORY ──────────────────────────────────────────────────── */
     public NktOperationHandler orderHistory() {
@@ -741,6 +791,48 @@ public class NktOrderHandler {
                 ));
             }
             
+
+			// ✅ Validate input
+			if (str(data, "latitude") == null || str(data, "longitude") == null) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Latitude and Longitude are required"));
+			}
+
+			double lat;
+			double lon;
+
+			try {
+				lat = Double.parseDouble(str(data, "latitude"));
+				lon = Double.parseDouble(str(data, "longitude"));
+			} catch (Exception e) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Invalid latitude/longitude format"));
+			}
+
+			double radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
+			
+			Object addrObj = store.get("location");
+
+			if (!(addrObj instanceof Map))
+				return null;
+
+			@SuppressWarnings("unchecked")
+			Map<String, Object> addr = (Map<String, Object>) addrObj;
+
+			Object sLat = addr.get("latitude");
+			Object sLon = addr.get("longitude");
+
+			if (sLat == null || sLon == null)
+				return null;
+
+			double distance = haversine(lat, lon, Double.parseDouble(sLat.toString()),
+					Double.parseDouble(sLon.toString()));
+
+			// ✅ filter by radius
+			if (distance > radius) {
+				return json(mapper,
+						Map.of("statusCode", "N400", "statusDesc", "This stock is not within the delivery radius"));
+			}
+
+            
             Map<String, Object> existingOpt = repo.findOneByCriteria("wishlist",
             		 Map.of("userId", userId, "itemId", itemId, "status", "ACTIVE"))
                     .orElse(null);
@@ -770,6 +862,9 @@ public class NktOrderHandler {
             wi.put("available", stock.get("status").equals("ACTIVE"));
             wi.put("status", "ACTIVE");
             wi.put("createdAt", LocalDateTime.now().toString());
+            wi.put("categoryId", stock.get("categoryId"));
+            wi.put("subCategoryId", stock.get("subCategoryId"));
+            wi.put("unit", stock.get("unit"));
 
             Map<String, Object> saved = repo.insert("wishlist", wi);
 
@@ -780,6 +875,149 @@ public class NktOrderHandler {
             ));
         };
     }
+
+	public NktOperationHandler getWishlist() {
+
+		return (data, userId, repo, mapper, def) -> {
+
+			// ---------------------------------------------------------
+			// 1. Get latitude / longitude / radius
+			// ---------------------------------------------------------
+			Double latitude = doubleValue(data, "latitude");
+			Double longitude = doubleValue(data, "longitude");
+			Double radius = doubleValue(data, "radius");
+
+			if (latitude == null || longitude == null || radius == null) {
+				return json(mapper,
+						Map.of("statusCode", "N400", "statusDesc", "latitude, longitude and radius are required"));
+			}
+
+			if (radius <= 0) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "radius must be greater than zero"));
+			}
+
+			// ---------------------------------------------------------
+			// 2. Get user's wishlist
+			// ---------------------------------------------------------
+			List<Map<String, Object>> wishlist = repo.findAll("wishlist", Map.of("userId", userId, "status", "ACTIVE"));
+
+			if (wishlist == null || wishlist.isEmpty()) {
+				return json(mapper, Map.of("data", Collections.emptyList(), "count", 0, "statusCode", "N200",
+						"statusDesc", "Success"));
+			}
+
+			// ---------------------------------------------------------
+			// 3. Get unique store IDs from wishlist
+			// ---------------------------------------------------------
+			Set<String> storeIds = wishlist.stream().map(item -> item.get("storeId")).filter(Objects::nonNull)
+					.map(Object::toString).collect(Collectors.toSet());
+
+			// ---------------------------------------------------------
+			// 4. Get stores
+			// ---------------------------------------------------------
+			List<Map<String, Object>> stores = repo.findAll("stores", Map.of("status", "ACTIVE"));
+
+			// ---------------------------------------------------------
+			// 5. Store lookup
+			// ---------------------------------------------------------
+			Map<String, Map<String, Object>> storeMap = stores.stream().filter(s -> s.get("storeId") != null)
+					.filter(s -> storeIds.contains(s.get("storeId").toString()))
+					.collect(Collectors.toMap(s -> s.get("storeId").toString(), s -> s, (a, b) -> a));
+
+			// ---------------------------------------------------------
+			// 6. Prepare response
+			// ---------------------------------------------------------
+			List<Map<String, Object>> result = new ArrayList<>();
+
+			for (Map<String, Object> item : wishlist) {
+
+				String storeId = item.get("storeId") != null ? item.get("storeId").toString() : null;
+
+				Map<String, Object> response = new LinkedHashMap<>(item);
+
+				boolean deliverable = false;
+
+				// -----------------------------------------------------
+				// Find store
+				// -----------------------------------------------------
+				Map<String, Object> store = storeMap.get(storeId);
+
+				if (store != null) {
+
+					Map<String, Object> location = (Map<String, Object>) store.get("location");
+
+					if (location != null) {
+
+						Double storeLatitude = doubleValue(location, "latitude");
+
+						Double storeLongitude = doubleValue(location, "longitude");
+
+						if (storeLatitude != null && storeLongitude != null) {
+
+							double distance = calculateDistanceInKm(latitude, longitude, storeLatitude, storeLongitude);
+
+							response.put("distance", distance);
+
+							deliverable = distance <= radius;
+						}
+					}
+				}
+
+				// -----------------------------------------------------
+				// Wishlist status
+				// -----------------------------------------------------
+				response.put("wishlistStatus", deliverable ? "DELIVERABLE" : "NON_DELIVERABLE");
+
+				result.add(response);
+			}
+
+			// ---------------------------------------------------------
+			// 7. Deliverable first
+			// ---------------------------------------------------------
+			result.sort(Comparator.comparing(item -> !"DELIVERABLE".equals(item.get("wishlistStatus"))));
+
+			// ---------------------------------------------------------
+			// 8. Response
+			// ---------------------------------------------------------
+			return json(mapper,
+					Map.of("data", result, "count", result.size(), "statusCode", "N200", "statusDesc", "Success"));
+		};
+	}
+
+	private double calculateDistanceInKm(double latitude1, double longitude1, double latitude2, double longitude2) {
+
+		final double EARTH_RADIUS_KM = 6371.0;
+
+		double latDistance = Math.toRadians(latitude2 - latitude1);
+
+		double lonDistance = Math.toRadians(longitude2 - longitude1);
+
+		double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2) + Math.cos(Math.toRadians(latitude1))
+				* Math.cos(Math.toRadians(latitude2)) * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+
+		double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+		return EARTH_RADIUS_KM * c;
+	}
+
+	private Double doubleValue(Map<String, Object> data, String field) {
+
+		Object value = data.get(field);
+
+		if (value == null) {
+			return null;
+		}
+
+		if (value instanceof Number number) {
+			return number.doubleValue();
+		}
+
+		try {
+			return Double.parseDouble(value.toString());
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
     
     public NktOperationHandler wishlistRemove() {
         return (data, userId, repo, mapper, def) -> {
@@ -825,6 +1063,69 @@ public class NktOrderHandler {
             String storeId = str(data, "storeId");
             String stockId = str(data, "stockId");
             String countStr = str(data, "stockCount");
+            
+            // ✅ 2. Validate stock item (ACTIVE only)
+            Map<String, Object> stock = repo.findOne("stocks", "stockId", stockId)
+//                    Map.of("_id", itemId, "status", "ACTIVE"))
+                    .orElse(null);
+
+            if (stock == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N404",
+                        "statusDesc", "Item not found or inactive"
+                ));
+            }
+            
+            // ✅ Validate store
+            Map<String, Object> store = repo.findOne("stores", "storeId", stock.get("storeId")).orElse(null);
+            if (store == null) {
+                return json(mapper, Map.of(
+                        "statusCode", "N404",
+                        "statusDesc", "Store not found"
+                ));
+            }
+            
+
+			// ✅ Validate input
+			if (str(data, "latitude") == null || str(data, "longitude") == null) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Latitude and Longitude are required"));
+			}
+
+			double lat;
+			double lon;
+
+			try {
+				lat = Double.parseDouble(str(data, "latitude"));
+				lon = Double.parseDouble(str(data, "longitude"));
+			} catch (Exception e) {
+				return json(mapper, Map.of("statusCode", "N400", "statusDesc", "Invalid latitude/longitude format"));
+			}
+
+			double radius = data.get("radiusKm") != null ? Double.parseDouble(str(data, "radiusKm")) : 5.0;
+			
+			Object addrObj = store.get("location");
+
+			if (!(addrObj instanceof Map))
+				return null;
+
+			@SuppressWarnings("unchecked")
+			Map<String, Object> addr = (Map<String, Object>) addrObj;
+
+			Object sLat = addr.get("latitude");
+			Object sLon = addr.get("longitude");
+
+			if (sLat == null || sLon == null)
+				return null;
+
+			double distance = haversine(lat, lon, Double.parseDouble(sLat.toString()),
+					Double.parseDouble(sLon.toString()));
+
+			// ✅ filter by radius
+			if (distance > radius) {
+				return json(mapper,
+						Map.of("statusCode", "N400", "statusDesc", "This stock is not within the delivery radius"));
+			}
+
 
             // ✅ Validate input
             if (storeId == null || stockId == null || countStr == null) {
@@ -845,26 +1146,26 @@ public class NktOrderHandler {
                 ));
             }
 
-            // ✅ Validate store
-            Map<String, Object> store = repo.findOne("stores", "storeId", storeId).orElse(null);
-            if (store == null) {
-                return json(mapper, Map.of(
-                        "statusCode", "N404",
-                        "statusDesc", "Store not found"
-                ));
-            }
-
-            // ✅ Validate stock
-            Map<String, Object> stock = repo.findOneByCriteria("stocks",
-                    Map.of("stockId", stockId, "storeId", storeId, "status", "ACTIVE"))
-                    .orElse(null);
-
-            if (stock == null) {
-                return json(mapper, Map.of(
-                        "statusCode", "N404",
-                        "statusDesc", "Stock not found in this store"
-                ));
-            }
+//            // ✅ Validate store
+//            Map<String, Object> store = repo.findOne("stores", "storeId", storeId).orElse(null);
+//            if (store == null) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N404",
+//                        "statusDesc", "Store not found"
+//                ));
+//            }
+//
+//            // ✅ Validate stock
+//            Map<String, Object> stock = repo.findOneByCriteria("stocks",
+//                    Map.of("stockId", stockId, "storeId", storeId, "status", "ACTIVE"))
+//                    .orElse(null);
+//
+//            if (stock == null) {
+//                return json(mapper, Map.of(
+//                        "statusCode", "N404",
+//                        "statusDesc", "Stock not found in this store"
+//                ));
+//            }
 
             String categoryId = stock.get("categoryId") != null ? stock.get("categoryId").toString() : null;
             String subCategoryId = stock.get("subCategoryId") != null ? stock.get("subCategoryId").toString() : null;
@@ -918,6 +1219,9 @@ public class NktOrderHandler {
                 wi.put("createdAt", LocalDateTime.now().toString());
                 wi.put("name", stock.get("name"));
                 wi.put("s_name", store.get("name"));
+                wi.put("categoryId", stock.get("categoryId"));
+                wi.put("subCategoryId", stock.get("subCategoryId"));
+                wi.put("unit", stock.get("unit"));
 
                 repo.insert("wishlist", wi);
 

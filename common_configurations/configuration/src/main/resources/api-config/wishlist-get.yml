@@ -2,7 +2,7 @@ apis:
   - id: wishlist-get
     name: Get Wishlist Items
     version: v1
-    method: GET
+    method: POST
     path: /api/v1/customer/wishlist
     description: Returns all items the customer has saved (heart-marked), with current price and availability status.
     enabled: true
@@ -23,7 +23,32 @@ apis:
         algorithm: AES256
     request:
       contentType: application/json
-      parameters: []
+      parameters:
+      - name: latitude
+        type: Double
+        location: BODY
+        required: true
+        validation:
+          min: -90.0
+          max: 90.0
+          errorMessage: Latitude must be between -90 and 90
+      - name: longitude
+        type: Double
+        location: BODY
+        required: true
+        validation:
+          min: -180.0
+          max: 180.0
+          errorMessage: Longitude must be between -180 and 180
+      - name: radius
+        type: Double
+        location: BODY
+        required: false
+        defaultValue: '5'
+        validation:
+          min: 0.1
+          max: 50.0
+          errorMessage: Radius must be between 0.1 and 50 km
     response:
       successCode: 200
       contentType: application/json
