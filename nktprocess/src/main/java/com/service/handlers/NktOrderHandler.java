@@ -335,6 +335,7 @@ public class NktOrderHandler {
 				oi.put("actualPrice", price);
 				oi.put("discountAmount", discountAmount);
 				oi.put("discountPercentage", discountPercentage);
+				oi.put("isPriceVisible", stock.get("isPriceVisible"));
 
 				orderItems.add(oi);
 				total += itemTotal;
@@ -865,6 +866,7 @@ public class NktOrderHandler {
             wi.put("categoryId", stock.get("categoryId"));
             wi.put("subCategoryId", stock.get("subCategoryId"));
             wi.put("unit", stock.get("unit"));
+            wi.put("isPriceVisible", stock.get("isPriceVisible"));
 
             Map<String, Object> saved = repo.insert("wishlist", wi);
 
@@ -1222,6 +1224,7 @@ public class NktOrderHandler {
                 wi.put("categoryId", stock.get("categoryId"));
                 wi.put("subCategoryId", stock.get("subCategoryId"));
                 wi.put("unit", stock.get("unit"));
+                wi.put("isPriceVisible", stock.get("isPriceVisible"));
 
                 repo.insert("wishlist", wi);
 

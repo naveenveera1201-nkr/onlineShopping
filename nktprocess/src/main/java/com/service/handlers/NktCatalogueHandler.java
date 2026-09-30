@@ -1317,6 +1317,11 @@ public class NktCatalogueHandler {
             Map<String, Object> filter = new LinkedHashMap<>();
             filter.put("storeId", storeId);
             filter.put("status", Map.of("$regex", "ACTIVE", "$options", "i"));
+            filter.put("unit", Map.of(
+                    "$elemMatch", Map.of(
+                            "availableQty", Map.of("$gt", 0)
+                    )
+            ));
 
 			// If subCategoryId is provided, no need to read store document
 			if (subCategoryId != null && !subCategoryId.isBlank()) {
